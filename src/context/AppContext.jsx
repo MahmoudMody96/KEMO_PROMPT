@@ -30,8 +30,12 @@ export const AppProvider = ({ children }) => {
     // Language state
     const [language, setLanguage] = useState('en');
 
-    // Navigation
-    const [activeTab, setActiveTab] = useState('home');
+    // Navigation — detect URL path for direct access (e.g. /admin)
+    const [activeTab, setActiveTab] = useState(() => {
+        const path = window.location.pathname.replace('/', '').toLowerCase();
+        const validTabs = ['home', 'generator', 'extractor', 'trendhunter', 'promptarchitect', 'secretvault', 'admin', 'pricing', 'about', 'services', 'contact'];
+        return validTabs.includes(path) ? path : 'home';
+    });
 
     // Generator state
     const [generatorInputs, setGeneratorInputs] = useState({
