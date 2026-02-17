@@ -1,0 +1,16 @@
+{
+    "name": "Kemo Prompt | Creative AI Engine",
+    "short_name": "Kemo Prompt",
+    "description": "AI Video Prompt Architect and Creative Engine",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#030712",
+    "theme_color": "#030712",
+    "icons": [
+        {
+            "src": "vite.svg",
+            "sizes": "192x192",
+            "type": "image/svg+xml"
+        }
+    ]
+}

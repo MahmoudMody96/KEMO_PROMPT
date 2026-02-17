@@ -1,0 +1,225 @@
+@import "tailwindcss";
+@config "../tailwind.config.js";
+
+@layer base {
+  :root {
+    /* LIGHT MODE (Clean SaaS) */
+    --bg-app: #F6F8FC;
+    --bg-sidebar: #FFFFFF;
+    --bg-surface: #FFFFFF;
+    --bg-input: #FFFFFF;
+    --border-color: #E6EAF2;
+    --text-primary: #1e293b;
+    --text-secondary: #64748b;
+    --text-muted: #94a3b8;
+    --shadow-card: 0 8px 24px rgba(16, 24, 40, 0.06);
+    --shadow-glow: 0 6px 18px rgba(108, 92, 255, 0.25);
+    --primary: #6C5CFF;
+    --primary-hover: #4DA3FF;
+    --bg-hover: #F1F4FA;
+    --bg-active: rgba(108, 92, 255, 0.08);
+  }
+
+  [data-theme="dark"] {
+    /* DARK MODE (Premium Depth) */
+    --bg-app: #0B0F19;
+    --bg-sidebar: #0F1424;
+    --bg-surface: #12182B;
+    --bg-input: #0F1424;
+    --border-color: rgba(255, 255, 255, 0.06);
+    --text-primary: #FFFFFF;
+    --text-secondary: #C9D1E6;
+    --text-muted: #8B95B3;
+    --shadow-card: 0 10px 30px rgba(0, 0, 0, 0.35);
+    --shadow-glow: 0 6px 20px rgba(108, 92, 255, 0.35);
+    --bg-hover: rgba(255, 255, 255, 0.04);
+    --bg-active: rgba(108, 92, 255, 0.13);
+  }
+
+  html {
+    font-family: 'Inter', system-ui, sans-serif;
+    @apply bg-bg0 text-text2 antialiased scroll-smooth;
+  }
+
+  body {
+    @apply bg-bg0 text-text2 min-h-screen overflow-x-hidden;
+  }
+
+  /* Custom Scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background-color: var(--border-color);
+    border-radius: 99px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: var(--text-muted);
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-surface border border-border shadow-card rounded-xl;
+  }
+
+  .card-header {
+    @apply px-4 py-3 border-b border-border flex items-center justify-between;
+  }
+
+  .card-body {
+    @apply p-4;
+  }
+
+  .input-base {
+    @apply h-9 w-full rounded-lg bg-bg1/50 border border-border px-3 text-[13px] text-text1 outline-none transition-all placeholder:text-muted/50 text-start;
+  }
+
+  .input-base:focus {
+    border-color: rgba(108, 92, 255, 0.5);
+    box-shadow: 0 0 0 4px rgba(108, 92, 255, 0.1);
+  }
+
+  .label-text {
+    @apply block text-[11px] font-medium mb-1 text-start text-text2;
+  }
+
+  /* Dark mode input override for "Input Fix" */
+  [data-theme="dark"] .input-base {
+    @apply border-white/[0.08] bg-white/[0.02];
+  }
+
+  [data-theme="dark"] .input-base:focus {
+    @apply border-primary/50 bg-white/[0.04];
+  }
+
+  /* Fix for select options background in dark mode */
+  select option {
+    background-color: var(--bg-surface);
+    color: var(--text-primary);
+  }
+
+  [data-theme="dark"] select option {
+    background-color: #12182B;
+    /* Deep dark blue-black for better contrast */
+    color: #FFFFFF;
+  }
+
+  .input-sm {
+    @apply h-9 text-sm px-2;
+  }
+
+  .select-base {
+    @apply appearance-none bg-no-repeat bg-[right_0.5rem_center] pr-8;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236C5CFF' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-size: 16px;
+  }
+
+  [data-theme="dark"] .select-base {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-size: 16px;
+  }
+
+  .input-base:focus {
+    @apply border-primary ring-2 ring-primary/25;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 transition-all duration-200 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed font-medium;
+  }
+
+  .btn-primary {
+    @apply h-11 px-6 rounded-xl text-white bg-primary-gradient shadow-glow hover:shadow-lg hover:-translate-y-[1px];
+  }
+
+  .btn-secondary {
+    @apply h-11 px-4 rounded-xl bg-bg1 border border-border text-text2 hover:bg-hover-state hover:text-text1;
+  }
+
+  .code-block {
+    @apply bg-bg1 border border-border rounded-xl overflow-hidden text-left;
+  }
+
+  .code-block-header {
+    @apply flex items-center justify-between px-4 py-3 bg-surface border-b border-border;
+  }
+
+  .code-block-content {
+    @apply p-4 font-mono text-sm overflow-x-auto text-text2;
+  }
+}
+
+/* === Idea Picker Overlay Animations === */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.1s ease-out forwards;
+}
+
+/* Toast slide-in animation */
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-slide-in-right {
+  animation: slideInRight 0.3s ease-out forwards;
+}
+
+/* Page transition animation */
+@keyframes pageEnter {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
