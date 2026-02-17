@@ -428,7 +428,7 @@ const Header = () => {
           background: 'linear-gradient(180deg, rgba(255,255,255,0.025) 0%, transparent 100%)',
           borderBottom: '1px solid rgba(255,255,255,0.04)',
         }}>
-        <nav className={`flex items-center gap-8 ${isRTL ? 'flex-row-reverse' : ''}`}>
+        <nav className={`hidden md:flex items-center gap-8 ${isRTL ? 'flex-row-reverse' : ''}`}>
           {navLinks.map((link) => {
             const isActive = activeTab === link.id || (link.id === 'services' && showServicesMenu);
             const LinkIcon = link.icon;
@@ -589,7 +589,7 @@ const MainContent = ({ onMenuClick }) => {
       </div>
 
       {/* Content Area - Scrollable */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 scroll-smooth">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden p-3 md:p-4 scroll-smooth">
         <div key={activeTab} style={{ animation: 'pageEnter 0.3s ease-out' }}>
           {renderContent()}
         </div>
@@ -613,8 +613,8 @@ const AppLayout = () => {
           />
         )}
         {/* Sidebar — hidden on mobile unless mobileOpen */}
-        <div className={`${mobileOpen ? 'fixed inset-y-0 right-0 z-50' : 'hidden'
-          } md:relative md:block`}>
+        <div className={`${mobileOpen ? 'fixed inset-y-0 right-0 z-50 w-64' : 'hidden'
+          } md:relative md:block md:w-auto`}>
           <Sidebar onNavClick={() => setMobileOpen(false)} />
         </div>
         <MainContent onMenuClick={() => setMobileOpen(true)} />

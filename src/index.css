@@ -43,6 +43,7 @@
 
   body {
     @apply bg-bg0 text-text2 min-h-screen overflow-x-hidden;
+    -webkit-overflow-scrolling: touch;
   }
 
   /* Custom Scrollbar */

@@ -52,7 +52,7 @@ const HeroBanner = ({ isRTL, onNavigate }) => {
             <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-violet-500/40 to-transparent" />
 
             {/* Content */}
-            <div className={`relative z-10 p-8 md:p-10 flex flex-col items-center text-center`}>
+            <div className={`relative z-10 p-5 md:p-8 lg:p-10 flex flex-col items-center text-center`}>
                 {/* Version Badge */}
                 <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full mb-5"
                     style={{
@@ -67,14 +67,14 @@ const HeroBanner = ({ isRTL, onNavigate }) => {
                 </div>
 
                 {/* Title */}
-                <h1 className="text-3xl md:text-4xl font-extrabold text-white mb-3 tracking-tight">
+                <h1 className="text-2xl md:text-3xl lg:text-4xl font-extrabold text-white mb-3 tracking-tight">
                     <span className="bg-gradient-to-r from-violet-400 via-blue-400 to-cyan-400 bg-clip-text text-transparent">
                         Kemo Engine
                     </span>
                 </h1>
 
                 {/* Subtitle */}
-                <p className="text-base md:text-lg text-zinc-400 mb-6 max-w-xl leading-relaxed">
+                <p className="text-sm md:text-base lg:text-lg text-zinc-400 mb-6 max-w-xl leading-relaxed px-2">
                     {isRTL
                         ? 'استوديو الذكاء الاصطناعي لإنتاج الفيديو — من الفكرة إلى السيناريو الاحترافي'
                         : 'AI-Powered Video Production Studio — From Idea to Professional Blueprint'
@@ -100,7 +100,7 @@ const HeroBanner = ({ isRTL, onNavigate }) => {
                 </div>
 
                 {/* CTA Buttons */}
-                <div className={`flex items-center gap-3 ${isRTL ? 'flex-row-reverse' : ''}`}>
+                <div className={`flex flex-col sm:flex-row items-center gap-3 ${isRTL ? 'sm:flex-row-reverse' : ''}`}>
                     <button
                         onClick={() => onNavigate('generator')}
                         className="group flex items-center gap-2.5 px-6 py-3 rounded-xl text-sm font-bold text-white transition-all duration-300 hover:scale-[1.03] active:scale-[0.97]"
