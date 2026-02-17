@@ -24,8 +24,6 @@ import {
   Mail,
   Briefcase,
   User,
-  Shield,
-  BarChart3,
   X
 } from 'lucide-react';
 import GeneratorSection from './components/generator/GeneratorSection';
@@ -42,10 +40,7 @@ const AboutPage = React.lazy(() => import('./components/pages/AboutPage'));
 const ServicesPage = React.lazy(() => import('./components/pages/ServicesPage'));
 const ContactPage = React.lazy(() => import('./components/pages/ContactPage'));
 const AdminDashboard = React.lazy(() => import('./components/admin/AdminDashboard'));
-
-// Admin check — must match ADMIN_EMAILS in AdminDashboard.jsx
-const ADMIN_EMAILS = ['mahmoud.abdelmonem1710@gmail.com'];
-const isAdmin = (user) => user?.email && ADMIN_EMAILS.includes(user.email.toLowerCase());
+const AdminLoginPage = React.lazy(() => import('./components/admin/AdminLoginPage'));
 
 // Compact Header Language Toggle
 const HeaderLanguageToggle = () => {
@@ -188,7 +183,6 @@ const Sidebar = ({ onNavClick }) => {
     { id: 'trendhunter', labelKey: 'trendHunter', descKey: 'trendHunterDesc', icon: Flame, color: 'indigo' },
     { id: 'promptarchitect', labelKey: 'promptArchitect', descKey: 'promptArchitectDesc', icon: Wand2, color: 'violet' },
     { id: 'secretvault', labelKey: 'secretVault', descKey: 'secretVaultDesc', icon: Lock, color: 'amber' },
-    ...(isAdmin(user) ? [{ id: 'admin', labelKey: 'admin', descKey: 'adminDesc', icon: Shield, color: 'red' }] : []),
   ];
 
   const initial = user ? (user.display_name || user.email || 'G')[0].toUpperCase() : 'G';
@@ -568,7 +562,6 @@ const MainContent = ({ onMenuClick }) => {
       case 'trendhunter': return <TrendHunter />;
       case 'promptarchitect': return <PromptArchitect />;
       case 'secretvault': return <SecretVault />;
-      case 'admin': return <React.Suspense fallback={<div className="flex items-center justify-center h-64"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>}><AdminDashboard /></React.Suspense>;
       case 'pricing': return <React.Suspense fallback={<div className="flex items-center justify-center h-64"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>}><PricingPage /></React.Suspense>;
       case 'about': return <React.Suspense fallback={<div className="flex items-center justify-center h-64"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>}><AboutPage /></React.Suspense>;
       case 'services': return <React.Suspense fallback={<div className="flex items-center justify-center h-64"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>}><ServicesPage /></React.Suspense>;
@@ -633,6 +626,7 @@ const AppLayout = () => {
 // Auth-aware root — shows login when user not logged in
 const AuthGate = () => {
   const { user, loading } = useAuth();
+  const isAdminRoute = window.location.pathname.toLowerCase().startsWith('/admin');
 
   // Loading state
   if (loading) {
@@ -646,7 +640,24 @@ const AuthGate = () => {
     );
   }
 
-  // No user → show login page
+  // /admin route — separate flow
+  if (isAdminRoute) {
+    if (!user) {
+      return (
+        <React.Suspense fallback={<div className="min-h-screen bg-[#0a0a1a]" />}>
+          <AdminLoginPage />
+        </React.Suspense>
+      );
+    }
+    // Logged in → show full-page admin dashboard (handles its own access control)
+    return (
+      <React.Suspense fallback={<div className="min-h-screen bg-[#0a0a1a]" />}>
+        <AdminDashboard />
+      </React.Suspense>
+    );
+  }
+
+  // Normal route — no user → show login page
   if (!user) {
     return (
       <React.Suspense fallback={<div className="min-h-screen bg-bg0" />}>
