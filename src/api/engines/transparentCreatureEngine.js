@@ -6,7 +6,7 @@
 // Returns genre-aware logic, character-specific roles, organ-drama
 // rules, and examples for the Transparent Living Creature style.
 // ═══════════════════════════════════════════════════════════════════
-const getTransparentCreatureRules = (genre, characterType, isNonHuman) => {
+export const getTransparentCreatureRules = (genre, characterType, isNonHuman) => {
     const g = (genre || '').toLowerCase();
 
     // ── Layer 1: Genre Logic Map — WHY does the creature exist? ──

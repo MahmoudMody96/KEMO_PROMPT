@@ -5,7 +5,7 @@
 // 🎯 GENRE GOAL — الهدف الأساسي لكل نوع محتوى
 // يُحقن في أعلى البرومبت لضمان عدم الانحراف عن الغرض الأساسي
 // ═══════════════════════════════════════════════════════════
-const getGenreGoal = (genre) => {
+export const getGenreGoal = (genre) => {
     const g = (genre || '').toLowerCase();
 
     if (g.includes('cook') || g.includes('food') || g.includes('recipe') || g.includes('طبخ'))

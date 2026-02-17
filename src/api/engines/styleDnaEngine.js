@@ -5,7 +5,7 @@
 // 🎨 VISUAL STYLE DNA ENGINE v1.0
 // كل نمط بصري ليه "حمض نووي" كامل يحدد شخصيته البصرية
 // ═══════════════════════════════════════════════════════════════════
-const getStyleDNA = (style) => {
+export const getStyleDNA = (style) => {
     const s = (style || '').toLowerCase();
 
     // ─────────────────────────────────────────

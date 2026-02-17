@@ -7,7 +7,7 @@
 // dialogue style, animation hints, and rendering notes.
 // Used by generateSystemPrompt() to inject character-specific rules.
 // ═══════════════════════════════════════════════════════════════════
-const getCharacterDNA = (characterType) => {
+export const getCharacterDNA = (characterType) => {
     const normalize = (s) => (s || '').toLowerCase().replace(/[\s_-]+/g, '');
     const ct = normalize(characterType);
 

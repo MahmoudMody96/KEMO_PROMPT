@@ -7,7 +7,7 @@
 // structure, audio direction, example lines, and forbidden patterns.
 // Used by generateSystemPrompt() to enforce consistent vocal identity.
 // ═══════════════════════════════════════════════════════════════════
-const getVoiceToneDNA = (tone) => {
+export const getVoiceToneDNA = (tone) => {
     const normalize = (s) => (s || '').toLowerCase().replace(/[\s_\-\/]+/g, '');
     const t = normalize(tone);
 

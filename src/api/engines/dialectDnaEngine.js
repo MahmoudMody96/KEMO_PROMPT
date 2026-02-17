@@ -7,7 +7,7 @@
 // humor style, cultural references, and example dialogue.
 // Used by generateSystemPrompt() to enforce authentic dialect usage.
 // ═══════════════════════════════════════════════════════════════════
-const getDialectDNA = (dialect) => {
+export const getDialectDNA = (dialect) => {
     const normalize = (s) => (s || '').toLowerCase().replace(/[\s_\-\/()]+/g, '');
     const d = normalize(dialect);
 
