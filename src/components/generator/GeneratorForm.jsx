@@ -107,13 +107,13 @@ const GeneratorForm = () => {
                     <div className="relative group/section rounded-2xl overflow-hidden" style={{ background: 'rgba(139,92,246,0.03)', border: '1px solid rgba(139,92,246,0.12)' }}>
                         <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-violet-500/50 to-transparent" />
                         <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-60 h-40 bg-violet-600/8 rounded-full blur-3xl pointer-events-none" />
-                        <div className="relative p-5">
+                        <div className="relative p-3.5 md:p-5">
                             <div className={`flex items-center gap-3 mb-4 ${isRTL ? 'flex-row-reverse' : ''}`}>
                                 <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'rgba(139,92,246,0.15)', boxShadow: '0 0 20px rgba(139,92,246,0.1)' }}><Sparkles className="w-4.5 h-4.5 text-violet-400" /></div>
                                 <div><h3 className="text-sm font-bold text-white">{safeT('ideaEngine', 'Creative Engine')}</h3><p className="text-[10px] text-zinc-500">{language === 'ar' ? 'اختر النوع والأسلوب والشخصيات' : 'Genre, style & characters'}</p></div>
                             </div>
                             <div className="space-y-3.5">
-                                <div className="grid grid-cols-2 gap-3">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     <FormField label={safeT('genre', 'Genre')} icon={Film} isRTL={isRTL}><Select value={generatorInputs?.genre || ''} onChange={(v) => updateGeneratorInput('genre', v)} options={options.genres} isRTL={isRTL} /></FormField>
                                     <FormField label={safeT('videoStyle', 'Visual Style')} icon={Palette} isRTL={isRTL}><Select value={generatorInputs?.videoStyle || ''} onChange={(v) => updateGeneratorInput('videoStyle', v)} options={options.videoStyles} isRTL={isRTL} /></FormField>
                                 </div>
@@ -146,7 +146,7 @@ const GeneratorForm = () => {
                     <div ref={conceptSectionRef} className="relative group/section rounded-2xl overflow-hidden" style={{ background: 'rgba(245,158,11,0.03)', border: '1px solid rgba(245,158,11,0.12)' }}>
                         <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-amber-500/50 to-transparent" />
                         <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-60 h-40 bg-amber-600/6 rounded-full blur-3xl pointer-events-none" />
-                        <div className="relative p-5">
+                        <div className="relative p-3.5 md:p-5">
                             <div className={`flex items-center justify-between mb-3 ${isRTL ? 'flex-row-reverse' : ''}`}>
                                 <div className={`flex items-center gap-3 ${isRTL ? 'flex-row-reverse' : ''}`}>
                                     <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'rgba(245,158,11,0.15)', boxShadow: '0 0 20px rgba(245,158,11,0.08)' }}><Type className="w-4.5 h-4.5 text-amber-400" /></div>
@@ -196,12 +196,12 @@ const GeneratorForm = () => {
                     <div className="relative group/section rounded-2xl overflow-hidden" style={{ background: 'rgba(6,182,212,0.03)', border: '1px solid rgba(6,182,212,0.12)' }}>
                         <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent" />
                         <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-60 h-40 bg-cyan-600/6 rounded-full blur-3xl pointer-events-none" />
-                        <div className="relative p-5">
+                        <div className="relative p-3.5 md:p-5">
                             <div className={`flex items-center gap-3 mb-4 ${isRTL ? 'flex-row-reverse' : ''}`}>
                                 <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'rgba(6,182,212,0.15)', boxShadow: '0 0 20px rgba(6,182,212,0.08)' }}><Settings2 className="w-4.5 h-4.5 text-cyan-400" /></div>
                                 <div><h3 className="text-sm font-bold text-white">{safeT('productionSettings', 'Production Settings')}</h3><p className="text-[10px] text-zinc-500">{language === 'ar' ? 'نسبة العرض والمدة والمشاهد' : 'Aspect ratio, duration & scenes'}</p></div>
                             </div>
-                            <div className="grid grid-cols-3 gap-3 mb-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
                                 <FormField label={safeT('aspectRatio', 'Aspect Ratio')} icon={Maximize} isRTL={isRTL}><VisualSelector options={options.aspectRatios} value={generatorInputs?.aspectRatio || '16:9'} onChange={(v) => updateGeneratorInput('aspectRatio', v)} isRTL={isRTL} /></FormField>
                                 <FormField label={safeT('duration', 'Duration')} icon={Clock} isRTL={isRTL}><Select value={generatorInputs?.duration || ''} onChange={(v) => updateGeneratorInput('duration', v)} options={options.durations} placeholder={language === 'ar' ? '-- اختر --' : '-- Select --'} isRTL={isRTL} /></FormField>
                                 <FormField label={safeT('scenes', 'Scenes')} icon={Hash} isRTL={isRTL} helpText={language === 'ar' ? 'عدد المشاهد المطلوبة في الفيديو' : 'Number of scenes for the video'}><TextInput type="number" value={generatorInputs?.numScenes || '5'} onChange={(v) => updateGeneratorInput('numScenes', v)} placeholder="5" /></FormField>
@@ -211,12 +211,12 @@ const GeneratorForm = () => {
                                     <div className={`flex items-center gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}><Volume2 className="w-3.5 h-3.5 text-cyan-500/60" /><span className="text-xs font-semibold text-zinc-400">{safeT('audioSettings', 'Audio')}</span></div>
                                     <Toggle active={audioEnabled} onChange={setAudioEnabled} purple />
                                 </div>
-                                {audioEnabled && (<div className="grid grid-cols-2 gap-3" style={{ animation: 'slideUp 0.15s ease-out' }}>
+                                {audioEnabled && (<div className="grid grid-cols-1 sm:grid-cols-2 gap-3" style={{ animation: 'slideUp 0.15s ease-out' }}>
                                     <FormField label={safeT('voiceTone', 'Voice Tone')} icon={Mic} isRTL={isRTL}><Select value={generatorInputs?.voiceTone || 'Professional'} onChange={(v) => updateGeneratorInput('voiceTone', v)} options={options.voiceTones} isRTL={isRTL} /></FormField>
                                     <FormField label={safeT('videoLanguage', 'Language')} icon={Languages} isRTL={isRTL}><Select value={generatorInputs?.videoLanguage || 'Egyptian (Masri)'} onChange={(v) => updateGeneratorInput('videoLanguage', v)} options={options.videoLanguages} isRTL={isRTL} /></FormField>
                                 </div>)}
                             </div>
-                            <div className="grid grid-cols-2 gap-3 mt-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
                                 <FormField label={safeT('customInstructions', 'Custom Notes')} isRTL={isRTL} helpText={language === 'ar' ? 'ملاحظات إضافية مثل: إضاءة خافتة، كاميرا يدوية...' : 'Extra notes like: moody lighting, handheld camera...'}><TextArea value={generatorInputs?.modifiers || ''} onChange={(v) => updateGeneratorInput('modifiers', v)} placeholder={safeT('customInstructionsPlaceholder', 'Moody lighting, handheld camera...')} rows={2} /></FormField>
                                 <FormField label={safeT('prohibitions', 'Prohibitions')} icon={ShieldAlert} isRTL={isRTL} helpText={language === 'ar' ? 'أشياء يجب تجنبها: عنف، دم، محتوى غير لائق...' : 'Things to avoid: violence, blood, inappropriate content...'}><TextArea value={generatorInputs?.prohibitions || ''} onChange={(v) => updateGeneratorInput('prohibitions', v)} placeholder={safeT('prohibitionsPlaceholder', 'No violence, no blood...')} rows={2} /></FormField>
                             </div>
@@ -226,7 +226,7 @@ const GeneratorForm = () => {
             </div>
             {/* Sticky Generate Button */}
             <div className="sticky bottom-0 pt-3 pb-2.5 mt-3 z-20" style={{ backdropFilter: 'blur(12px)', background: 'linear-gradient(to top, rgba(11,15,25,0.95), rgba(11,15,25,0.7) 60%, transparent)', borderTop: '1px solid rgba(255,255,255,0.04)' }}>
-                <button onClick={handleGenerate} disabled={isGenerating || !generatorInputs?.coreIdea?.trim() || !generatorInputs?.duration} className="w-full h-12 px-5 rounded-2xl text-sm text-white font-bold transition-all duration-300 flex items-center justify-center gap-2.5 disabled:opacity-50 disabled:hover:scale-100 hover:scale-[1.01] active:scale-[0.99]" style={{ maxWidth: 640, margin: '0 auto', background: isGenerating ? 'linear-gradient(135deg, #4338ca, #6d28d9)' : 'linear-gradient(135deg, #3b82f6, #8b5cf6, #a855f7)', boxShadow: isGenerating ? '0 4px 20px rgba(99,102,241,0.2)' : '0 6px 25px rgba(139,92,246,0.3), 0 0 40px rgba(139,92,246,0.08)' }}>
+                <button onClick={handleGenerate} disabled={isGenerating || !generatorInputs?.coreIdea?.trim() || !generatorInputs?.duration} className="w-full h-12 md:h-12 px-5 rounded-2xl text-sm text-white font-bold transition-all duration-300 flex items-center justify-center gap-2.5 disabled:opacity-50 disabled:hover:scale-100 hover:scale-[1.01] active:scale-[0.99]" style={{ maxWidth: 640, margin: '0 auto', background: isGenerating ? 'linear-gradient(135deg, #4338ca, #6d28d9)' : 'linear-gradient(135deg, #3b82f6, #8b5cf6, #a855f7)', boxShadow: isGenerating ? '0 4px 20px rgba(99,102,241,0.2)' : '0 6px 25px rgba(139,92,246,0.3), 0 0 40px rgba(139,92,246,0.08)' }}>
                     {isGenerating ? (<><Loader2 className="w-4.5 h-4.5 animate-spin" /><span>{language === 'ar' ? 'جاري الابتكار...' : 'Crafting Blueprint...'}</span></>) : (<><Wand2 className="w-4.5 h-4.5" /><span>{language === 'ar' ? 'توليد السيناريو' : 'Generate Blueprint'}</span></>)}
                 </button>
             </div>

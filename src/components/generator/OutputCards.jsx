@@ -62,18 +62,18 @@ export const CharacterCard = ({ char, index, isRTL, language }) => {
     const avatarEmojis = ['🎭', '👤', '🎬', '🌟', '🎪', '🎨'];
 
     return (
-        <div className="bg-bg1/50 border border-border rounded-lg p-4 mb-3 fade-in hover:border-primary/30 transition-colors" style={{ animationDelay: `${index * 0.1}s` }}>
+        <div className="bg-bg1/50 border border-border rounded-lg p-3 sm:p-4 mb-3 fade-in hover:border-primary/30 transition-colors" style={{ animationDelay: `${index * 0.1}s` }}>
             <div className={`flex items-start gap-3 ${isRTL ? 'flex-row-reverse' : ''}`}>
                 <div className="character-avatar">{avatarEmojis[index % avatarEmojis.length]}</div>
                 <div className="flex-1 min-w-0">
                     <div className={`flex items-center gap-2 mb-1 flex-wrap ${isRTL ? 'flex-row-reverse' : ''}`}>
-                        <h4 className="font-bold text-base" style={{ color: 'var(--text-primary)' }}>{name}</h4>
+                        <h4 className="font-bold text-sm sm:text-base" style={{ color: 'var(--text-primary)' }}>{name}</h4>
                         {role && <span className={`text-[10px] px-2 py-0.5 rounded-full border font-medium ${roleClass}`}>{role}</span>}
                     </div>
                     {desc && (
                         <div className="mt-2">
                             <p className="text-xs text-zinc-500 uppercase tracking-wide mb-1">📝 {language === 'ar' ? 'وصف الشخصية' : 'Screenplay Description'}</p>
-                            <p className="text-sm text-zinc-300 leading-relaxed font-mono bg-zinc-800/50 p-2 rounded border border-zinc-700/50" dir={isRTL ? 'rtl' : 'ltr'}>
+                            <p className="text-xs sm:text-sm text-zinc-300 leading-relaxed font-mono bg-zinc-800/50 p-2 rounded border border-zinc-700/50 break-words overflow-x-auto" dir={isRTL ? 'rtl' : 'ltr'}>
                                 {desc}
                             </p>
                         </div>
@@ -81,7 +81,7 @@ export const CharacterCard = ({ char, index, isRTL, language }) => {
                     {imagePrompt && (
                         <div className="mt-2">
                             <p className="text-xs text-zinc-500 uppercase tracking-wide mb-1">🖼️ {language === 'ar' ? 'برومبت الصورة' : 'Image Prompt'}</p>
-                            <p className="text-sm text-emerald-300 leading-relaxed bg-emerald-950/30 p-2 rounded border border-emerald-700/30">
+                            <p className="text-xs sm:text-sm text-emerald-300 leading-relaxed bg-emerald-950/30 p-2 rounded border border-emerald-700/30 break-words overflow-x-auto">
                                 {imagePrompt}
                             </p>
                         </div>
@@ -280,7 +280,7 @@ export const SceneCard = ({ scene, index, isRTL, language, onUpdateScene, isExpa
 export const MasterPromptCard = ({ prompt, isRTL, language }) => {
     if (!prompt) return null;
     return (
-        <div className="mb-6 fade-in p-5 rounded-xl border border-amber-500/30 bg-gradient-to-r from-amber-900/20 to-transparent">
+        <div className="mb-6 fade-in p-3 sm:p-5 rounded-xl border border-amber-500/30 bg-gradient-to-r from-amber-900/20 to-transparent">
             <div className={`flex items-start gap-4 ${isRTL ? 'flex-row-reverse' : ''}`}>
                 <div className="p-3 rounded-lg bg-amber-500/20 border border-amber-500/30">
                     <span className="text-2xl">🖍️</span>

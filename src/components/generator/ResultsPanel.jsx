@@ -38,7 +38,7 @@ const ResultsPanel = () => {
 
     if (!generatedOutput) {
         return (
-            <div className="h-full flex flex-col items-center justify-center text-center px-8 relative overflow-hidden">
+            <div className="h-full flex flex-col items-center justify-center text-center px-4 md:px-8 relative overflow-hidden">
                 {/* Document canvas pseudo-elements */}
                 <div className="absolute pointer-events-none" style={{
                     width: 420, maxWidth: '70%', height: '70%',
@@ -74,7 +74,7 @@ const ResultsPanel = () => {
     return (
         <div className="h-full flex flex-col">
             {/* Action Bar */}
-            <div className="flex items-center justify-end gap-2 mb-3 flex-shrink-0">
+            <div className="flex items-center justify-end gap-1.5 sm:gap-2 mb-3 flex-shrink-0 flex-wrap">
                 <button
                     onClick={() => {
                         const chars = (generatedOutput.characters || []);
@@ -238,7 +238,7 @@ const ResultsPanel = () => {
                         <button
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
-                            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${isRTL ? 'flex-row-reverse' : ''} ${isActive
+                            className={`flex-1 flex items-center justify-center gap-1.5 sm:gap-2 px-2 sm:px-4 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-all duration-200 ${isRTL ? 'flex-row-reverse' : ''} ${isActive
                                 ? 'bg-primary/20 text-primary shadow-sm border border-primary/30'
                                 : 'text-text2 hover:text-text1 hover:bg-white/5'
                                 }`}
@@ -270,7 +270,7 @@ const ResultsPanel = () => {
                             {/* Master Visual Prompt (Reference Image) */}
                             {meta?.master_visual_prompt && (
                                 <div className="mb-4 fade-in">
-                                    <div className="p-4 rounded-xl border bg-gradient-to-br from-amber-900/20 to-transparent" style={{ borderColor: 'rgba(245,158,11,0.3)' }}>
+                                    <div className="p-3 sm:p-4 rounded-xl border bg-gradient-to-br from-amber-900/20 to-transparent" style={{ borderColor: 'rgba(245,158,11,0.3)' }}>
                                         <div className="flex items-center justify-between mb-2">
                                             <div className="flex items-center gap-2">
                                                 <span className="text-lg">🖼</span>
