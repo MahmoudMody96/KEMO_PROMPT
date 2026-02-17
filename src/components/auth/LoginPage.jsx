@@ -6,27 +6,41 @@ import { useAuth } from '../../context/AuthContext';
 import { Mail, Lock, User, Chrome, ArrowRight, Loader2, UserX } from 'lucide-react';
 
 const LoginPage = () => {
-    const { signIn, signUp, signInWithGoogle, error } = useAuth();
+    const { signIn, signUp, signInWithGoogle, error: authError, isAuthEnabled } = useAuth();
     const [isSignUp, setIsSignUp] = useState(false);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [displayName, setDisplayName] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [successMessage, setSuccessMessage] = useState('');
+    const [localError, setLocalError] = useState('');
+
+    const error = localError || authError;
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        setLocalError('');
         setIsLoading(true);
         setSuccessMessage('');
 
         try {
+            if (!isAuthEnabled) {
+                setLocalError('⚠️ Supabase غير مُفعّل — أضف VITE_SUPABASE_URL و VITE_SUPABASE_ANON_KEY في إعدادات Vercel');
+                return;
+            }
+
             if (isSignUp) {
                 const result = await signUp(email, password, displayName);
-                if (!result.error) {
+                if (result.error) {
+                    setLocalError(result.error);
+                } else {
                     setSuccessMessage('✅ تم إنشاء الحساب! تحقق من بريدك الإلكتروني لتفعيل الحساب.');
                 }
             } else {
-                await signIn(email, password);
+                const result = await signIn(email, password);
+                if (result?.error) {
+                    setLocalError(result.error);
+                }
             }
         } finally {
             setIsLoading(false);
@@ -34,8 +48,16 @@ const LoginPage = () => {
     };
 
     const handleGoogleLogin = async () => {
+        setLocalError('');
+        if (!isAuthEnabled) {
+            setLocalError('⚠️ Supabase غير مُفعّل — أضف VITE_SUPABASE_URL و VITE_SUPABASE_ANON_KEY في إعدادات Vercel');
+            return;
+        }
         setIsLoading(true);
-        await signInWithGoogle();
+        const result = await signInWithGoogle();
+        if (result?.error) {
+            setLocalError(result.error);
+        }
         setIsLoading(false);
     };
 
