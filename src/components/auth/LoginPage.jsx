@@ -6,7 +6,7 @@ import { useAuth } from '../../context/AuthContext';
 import { Mail, Lock, User, Chrome, ArrowRight, Loader2, UserX } from 'lucide-react';
 
 const LoginPage = () => {
-    const { signIn, signUp, signInWithGoogle, continueAsGuest, error } = useAuth();
+    const { signIn, signUp, signInWithGoogle, error } = useAuth();
     const [isSignUp, setIsSignUp] = useState(false);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -121,11 +121,7 @@ const LoginPage = () => {
                         <span>تسجيل الدخول بـ Google</span>
                     </button>
 
-                    {/* Continue as Guest */}
-                    <button type="button" onClick={continueAsGuest} className="login-btn-guest">
-                        <UserX className="w-5 h-5" />
-                        <span>متابعة كضيف</span>
-                    </button>
+
                 </form>
 
                 {/* Toggle Sign Up / Sign In */}

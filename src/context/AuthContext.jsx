@@ -9,15 +9,7 @@ import { getSupabase, isSupabaseConfigured } from '../lib/supabase';
 
 const AuthContext = createContext(null);
 
-// Guest user for local development
-const GUEST_USER = {
-    id: 'guest',
-    email: 'guest@local',
-    display_name: 'Guest User',
-    plan: 'free',
-    credits_remaining: 999,
-    isGuest: true
-};
+
 
 export function AuthProvider({ children }) {
     const [user, setUser] = useState(null);
@@ -165,22 +157,18 @@ export function AuthProvider({ children }) {
         }
     }, [isAuthEnabled]);
 
-    // Continue as Guest (skip login)
-    const continueAsGuest = useCallback(() => {
-        setUser(GUEST_USER);
-    }, []);
+
 
     const value = {
         user,
         loading,
         error,
         isAuthEnabled,
-        isGuest: user?.isGuest || false,
+        isGuest: false,
         signUp,
         signIn,
         signInWithGoogle,
         signOut,
-        continueAsGuest,
     };
 
     return (

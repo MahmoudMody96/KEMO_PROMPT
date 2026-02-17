@@ -41,6 +41,11 @@ const PricingPage = React.lazy(() => import('./components/pages/PricingPage'));
 const AboutPage = React.lazy(() => import('./components/pages/AboutPage'));
 const ServicesPage = React.lazy(() => import('./components/pages/ServicesPage'));
 const ContactPage = React.lazy(() => import('./components/pages/ContactPage'));
+const AdminDashboard = React.lazy(() => import('./components/admin/AdminDashboard'));
+
+// Admin check — must match ADMIN_EMAILS in AdminDashboard.jsx
+const ADMIN_EMAILS = ['mahmoud.abdelmonem1710@gmail.com'];
+const isAdmin = (user) => user?.email && ADMIN_EMAILS.includes(user.email.toLowerCase());
 
 // Compact Header Language Toggle
 const HeaderLanguageToggle = () => {
@@ -70,16 +75,16 @@ const HeaderLanguageToggle = () => {
 // ═══════════════════════════════════════
 const UserProfileModal = ({ onClose }) => {
   const { isRTL, language } = useAppContext();
-  const { user, signOut, isGuest } = useAuth();
+  const { user, signOut } = useAuth();
   const isAr = language === 'ar';
   const initial = (user?.display_name || user?.email || 'G')[0].toUpperCase();
-  const displayName = user?.display_name || (isGuest ? (isAr ? 'ضيف' : 'Guest') : user?.email?.split('@')[0]);
+  const displayName = user?.display_name || user?.email?.split('@')[0];
 
   const usageLimits = [
-    { labelEn: 'Video Blueprints', labelAr: 'مخططات الفيديو', used: 3, max: isGuest ? 5 : 50, color: '#818cf8' },
-    { labelEn: 'Prompt Extractions', labelAr: 'استخراج البرومبتات', used: 1, max: isGuest ? 3 : 30, color: '#38bdf8' },
-    { labelEn: 'Trend Scans', labelAr: 'مسح الترندات', used: 0, max: isGuest ? 2 : 20, color: '#fb923c' },
-    { labelEn: 'Prompt Architect', labelAr: 'مهندس البرومبت', used: 2, max: isGuest ? 5 : 50, color: '#c084fc' },
+    { labelEn: 'Video Blueprints', labelAr: 'مخططات الفيديو', used: 3, max: 50, color: '#818cf8' },
+    { labelEn: 'Prompt Extractions', labelAr: 'استخراج البرومبتات', used: 1, max: 30, color: '#38bdf8' },
+    { labelEn: 'Trend Scans', labelAr: 'مسح الترندات', used: 0, max: 20, color: '#fb923c' },
+    { labelEn: 'Prompt Architect', labelAr: 'مهندس البرومبت', used: 2, max: 50, color: '#c084fc' },
   ];
 
   return (
@@ -99,7 +104,7 @@ const UserProfileModal = ({ onClose }) => {
                 </div>
                 <div className={isRTL ? 'text-right' : ''}>
                   <p className="text-base font-bold text-white">{displayName}</p>
-                  <p className="text-xs text-zinc-400">{isGuest ? (isAr ? 'وضع الضيف' : 'Guest Mode') : user?.email}</p>
+                  <p className="text-xs text-zinc-400">{user?.email}</p>
                 </div>
               </div>
               <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-white/5 transition-colors">
@@ -164,7 +169,7 @@ const UserProfileModal = ({ onClose }) => {
 
 const Sidebar = ({ onNavClick }) => {
   const { activeTab, setActiveTab, t, isRTL, language, toggleLanguage } = useAppContext();
-  const { user, signOut, isGuest } = useAuth();
+  const { user, signOut } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
   const [theme, setTheme] = useState(() => localStorage.getItem('kemo-theme') || 'dark');
   const [showUserModal, setShowUserModal] = useState(false);
@@ -183,10 +188,11 @@ const Sidebar = ({ onNavClick }) => {
     { id: 'trendhunter', labelKey: 'trendHunter', descKey: 'trendHunterDesc', icon: Flame, color: 'indigo' },
     { id: 'promptarchitect', labelKey: 'promptArchitect', descKey: 'promptArchitectDesc', icon: Wand2, color: 'violet' },
     { id: 'secretvault', labelKey: 'secretVault', descKey: 'secretVaultDesc', icon: Lock, color: 'amber' },
+    ...(isAdmin(user) ? [{ id: 'admin', labelKey: 'admin', descKey: 'adminDesc', icon: Shield, color: 'red' }] : []),
   ];
 
   const initial = user ? (user.display_name || user.email || 'G')[0].toUpperCase() : 'G';
-  const displayName = user?.display_name || (isGuest ? (isRTL ? 'ضيف' : 'Guest') : user?.email?.split('@')[0]);
+  const displayName = user?.display_name || user?.email?.split('@')[0];
 
   return (
     <aside
@@ -270,7 +276,7 @@ const Sidebar = ({ onNavClick }) => {
             <div className={`flex-1 min-w-0 ${isRTL ? 'text-right' : 'text-left'}`}>
               <p className="text-xs font-semibold text-text1 truncate">{displayName}</p>
               <p className="text-[10px] text-muted truncate">
-                {isGuest ? (isRTL ? 'ضيف' : 'Guest') : (user?.plan === 'pro' ? 'PRO' : 'FREE')}
+                {user?.plan === 'pro' ? 'PRO' : 'FREE'}
               </p>
             </div>
             <ChevronRight className={`w-3.5 h-3.5 text-zinc-600 group-hover:text-zinc-400 transition-colors ${isRTL ? 'rotate-180' : ''}`} />
@@ -562,6 +568,7 @@ const MainContent = ({ onMenuClick }) => {
       case 'trendhunter': return <TrendHunter />;
       case 'promptarchitect': return <PromptArchitect />;
       case 'secretvault': return <SecretVault />;
+      case 'admin': return <React.Suspense fallback={<div className="flex items-center justify-center h-64"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>}><AdminDashboard /></React.Suspense>;
       case 'pricing': return <React.Suspense fallback={<div className="flex items-center justify-center h-64"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>}><PricingPage /></React.Suspense>;
       case 'about': return <React.Suspense fallback={<div className="flex items-center justify-center h-64"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>}><AboutPage /></React.Suspense>;
       case 'services': return <React.Suspense fallback={<div className="flex items-center justify-center h-64"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>}><ServicesPage /></React.Suspense>;
