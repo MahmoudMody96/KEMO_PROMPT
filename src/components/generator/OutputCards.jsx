@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAppContext } from '../../context/AppContext';
 import {
-    Film, Mic, Volume2, Image, Pencil, Check, Copy, ChevronDown
+    Film, Mic, Volume2, Image, Pencil, Check, Copy, ChevronDown, RefreshCw, Loader2
 } from 'lucide-react';
+import { scoreScenePrompt } from './QualityValidation';
 
 // ===========================
 // COPY BUTTON HELPER
@@ -97,7 +98,7 @@ export const CharacterCard = ({ char, index, isRTL, language }) => {
 // ===========================
 // SCENE CARD (Accordion)
 // ===========================
-export const SceneCard = ({ scene, index, isRTL, language, onUpdateScene, isExpanded = true, onToggle }) => {
+export const SceneCard = ({ scene, index, isRTL, language, onUpdateScene, isExpanded = true, onToggle, onRegenerateScene, isRegenerating }) => {
     const getSafeString = (val) => {
         if (!val) return '';
         if (typeof val === 'string') return val;
@@ -217,8 +218,36 @@ export const SceneCard = ({ scene, index, isRTL, language, onUpdateScene, isExpa
                             <span className="text-xs text-muted mt-0.5 line-clamp-1" dir="auto">{collapsedSummary}</span>
                         )}
                     </div>
+                    {/* Quality Score Badge */}
+                    {scenePrompt && (() => {
+                        const q = scoreScenePrompt(scenePrompt);
+                        const gradeColors = {
+                            'A+': 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
+                            'A': 'bg-emerald-500/15 text-emerald-400 border-emerald-500/25',
+                            'B+': 'bg-blue-500/15 text-blue-400 border-blue-500/25',
+                            'B': 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+                            'C': 'bg-amber-500/15 text-amber-400 border-amber-500/25',
+                            'D': 'bg-red-500/15 text-red-400 border-red-500/25',
+                        };
+                        return (
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full border font-bold ${gradeColors[q.grade] || gradeColors['D']}`}
+                                title={`${q.score}/100 — ${q.feedback}`}>
+                                {q.grade}
+                            </span>
+                        );
+                    })()}
                 </div>
                 <div className="flex items-center gap-1.5">
+                    {isExpanded && !isRegenerating && onRegenerateScene && (
+                        <button
+                            onClick={(e) => { e.stopPropagation(); onRegenerateScene(index); }}
+                            className="p-1 rounded-md hover:bg-amber-500/15 text-zinc-500 hover:text-amber-400 transition-colors"
+                            title={language === 'ar' ? 'إعادة توليد هذا المشهد' : 'Regenerate this scene'}
+                        >
+                            <RefreshCw className="w-3.5 h-3.5" />
+                        </button>
+                    )}
+                    {isRegenerating && <Loader2 className="w-3.5 h-3.5 text-amber-400 animate-spin" />}
                     {isExpanded && <CopyBtn text={`Scene ${num}\n\nVisual:\n${visual}\n\nDialogue:\n${dialogue}\n\nAudio:\n${audio}`} />}
                     <ChevronDown className={`w-3.5 h-3.5 text-muted transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
                 </div>

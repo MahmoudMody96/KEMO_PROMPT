@@ -4,7 +4,7 @@
 // Consumers: import { generate_prompt, brainstorm_concept, ... } from './promptApi'
 
 // Screenplay generation
-export { generate_prompt } from './engines/screenplayEngine.js';
+export { generate_prompt, regenerate_scene } from './engines/screenplayEngine.js';
 
 // Brainstorming
 export { brainstorm_concept } from './engines/brainstormEngine.js';

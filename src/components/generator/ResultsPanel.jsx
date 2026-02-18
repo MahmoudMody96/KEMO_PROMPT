@@ -1,18 +1,38 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAppContext } from '../../context/AppContext';
 import {
-    UserCircle, Film, Sparkles, ChevronDown, Download, Trash2, Zap
+    UserCircle, Film, Sparkles, ChevronDown, Download, Trash2, Zap, FileJson, History, RefreshCw
 } from 'lucide-react';
 import { CharacterCard, SceneCard, CopyBtn } from './OutputCards';
 import GeneratingState from './GeneratingState';
+import { scoreScenePrompt, validateConsistency } from './QualityValidation';
+import { regenerate_scene } from '../../api/promptApi';
 
 const ResultsPanel = () => {
 
     const [activeTab, setActiveTab] = useState('characters');
     const [visionCollapsed, setVisionCollapsed] = useState(true);
     const [expandedScene, setExpandedScene] = useState(0);
-    const { generatedOutput, setGeneratedOutput, isGenerating, generationProgress, t, isRTL, language } = useAppContext();
+    const [regeneratingScene, setRegeneratingScene] = useState(-1);
+    const [showHistory, setShowHistory] = useState(false);
+    const { generatedOutput, setGeneratedOutput, isGenerating, generationProgress, t, isRTL, language, generatorInputs } = useAppContext();
     const safeT = (key, fallback = '') => { const val = t?.(key); return (val && val !== key) ? val : fallback; };
+
+    // Auto-save results to localStorage + history
+    useEffect(() => {
+        if (generatedOutput && !isGenerating) {
+            try {
+                localStorage.setItem('kemo-last-scenario', JSON.stringify(generatedOutput));
+                // Save to history (max 10)
+                const historyRaw = localStorage.getItem('kemo-scenario-history');
+                const history = historyRaw ? JSON.parse(historyRaw) : [];
+                const title = generatedOutput.meta_data?.title || generatedOutput.metadata?.title || new Date().toLocaleTimeString();
+                const entry = { title, date: new Date().toISOString(), data: generatedOutput };
+                const newHistory = [entry, ...history.filter(h => h.title !== title)].slice(0, 10);
+                localStorage.setItem('kemo-scenario-history', JSON.stringify(newHistory));
+            } catch (e) { /* quota exceeded — ignore */ }
+        }
+    }, [generatedOutput, isGenerating]);
 
     const tabs = [
         { id: 'characters', labelKey: 'charactersTab', fallback: 'Characters', icon: UserCircle },
@@ -161,6 +181,21 @@ const ResultsPanel = () => {
                 </button>
                 <button
                     onClick={() => {
+                        const blob = new Blob([JSON.stringify(generatedOutput, null, 2)], { type: 'application/json;charset=utf-8' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `kemo-scenario-${new Date().toISOString().slice(0, 10)}.json`;
+                        a.click();
+                        URL.revokeObjectURL(url);
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20 hover:bg-blue-500/20 transition-all"
+                >
+                    <FileJson className="w-3.5 h-3.5" />
+                    {language === 'ar' ? 'تصدير JSON' : 'Export JSON'}
+                </button>
+                <button
+                    onClick={() => {
                         setGeneratedOutput(null);
                         localStorage.removeItem('kemo-last-scenario');
                     }}
@@ -170,6 +205,20 @@ const ResultsPanel = () => {
                     {language === 'ar' ? 'مسح' : 'Clear'}
                 </button>
             </div>
+            {/* Title & Logline */}
+            {(meta.title || meta.logline) && (
+                <div className={`mb-3 px-3 py-2.5 rounded-xl border bg-gradient-to-br from-primary/5 to-transparent ${isRTL ? 'text-right' : ''}`} style={{ borderColor: 'var(--accent-primary)', opacity: 0.9 }}>
+                    {meta.title && (
+                        <h2 className="text-sm sm:text-base font-bold mb-0.5" style={{ color: 'var(--text-primary)' }} dir={isRTL ? 'rtl' : 'ltr'}>
+                            🎬 {meta.title}
+                        </h2>
+                    )}
+                    {meta.logline && (
+                        <p className="text-xs text-text2 leading-snug" dir={isRTL ? 'rtl' : 'ltr'}>{meta.logline}</p>
+                    )}
+                </div>
+            )}
+
             {/* Creative Blueprint - Director's Vision */}
             {blueprint && (
                 <div className="mb-3 rounded-xl border overflow-hidden" style={{ backgroundColor: 'var(--bg-hover)', borderColor: 'var(--accent-primary)' }}>
@@ -292,6 +341,31 @@ const ResultsPanel = () => {
                             {scenes.map((scene, i) => <SceneCard key={i} scene={scene} index={i} isRTL={isRTL} language={language}
                                 isExpanded={expandedScene === i}
                                 onToggle={() => setExpandedScene(expandedScene === i ? -1 : i)}
+                                isRegenerating={regeneratingScene === i}
+                                onRegenerateScene={async (sceneIndex) => {
+                                    setRegeneratingScene(sceneIndex);
+                                    try {
+                                        const existingScenes = scenes;
+                                        const existingCharacters = characters;
+                                        const result = await regenerate_scene({
+                                            sceneIndex,
+                                            existingScenes,
+                                            existingCharacters,
+                                            originalInputs: generatorInputs || {}
+                                        });
+                                        if (result) {
+                                            const updated = { ...generatedOutput };
+                                            const scenesArr = updated.scenes || updated.sceneDirectives;
+                                            if (scenesArr && scenesArr[sceneIndex]) {
+                                                scenesArr[sceneIndex] = { ...scenesArr[sceneIndex], ...result };
+                                                setGeneratedOutput({ ...updated });
+                                            }
+                                        }
+                                    } catch (e) {
+                                        console.error('Regenerate scene failed:', e);
+                                    }
+                                    setRegeneratingScene(-1);
+                                }}
                                 onUpdateScene={(sceneIndex, field, value) => {
                                     const updated = { ...generatedOutput };
                                     const scenesArr = updated.scenes || updated.sceneDirectives;
