@@ -118,7 +118,10 @@ const GeneratorForm = () => {
                                     <FormField label={safeT('videoStyle', 'Visual Style')} icon={Palette} isRTL={isRTL}><Select value={generatorInputs?.videoStyle || ''} onChange={(v) => updateGeneratorInput('videoStyle', v)} options={options.videoStyles} isRTL={isRTL} /></FormField>
                                 </div>
                                 <div className="p-3 rounded-xl relative" style={{ background: 'rgba(139,92,246,0.05)', border: '1px solid rgba(139,92,246,0.08)', zIndex: 20 }}>
-                                    <FormField label={language === 'ar' ? '👤 الشخصية الرئيسية' : '👤 Primary Character'} icon={UserCircle} isRTL={isRTL}><Select value={generatorInputs?.characters?.primary || ''} onChange={(v) => updateCharacter('primary', 0, v)} options={options.characterTypes} isRTL={isRTL} /></FormField>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                                        <FormField label={language === 'ar' ? '👤 الشخصية الرئيسية' : '👤 Primary Character'} icon={UserCircle} isRTL={isRTL}><Select value={generatorInputs?.characters?.primary || ''} onChange={(v) => updateCharacter('primary', 0, v)} options={options.characterTypes} isRTL={isRTL} /></FormField>
+                                        <FormField label={safeT('videoLanguage', 'Dialogue Language')} icon={Languages} isRTL={isRTL}><Select value={generatorInputs?.videoLanguage || 'Egyptian Arabic (Masri)'} onChange={(v) => updateGeneratorInput('videoLanguage', v)} options={options.videoLanguages} isRTL={isRTL} /></FormField>
+                                    </div>
                                     {(generatorInputs?.characters?.secondary || []).length > 0 && (
                                         <div className="mt-3 pt-3 border-t border-violet-500/10">
                                             <div className={`text-[10px] font-semibold text-zinc-500 mb-2 flex items-center gap-1.5 ${isRTL ? 'flex-row-reverse' : ''}`}><Users className="w-3 h-3" />{language === 'ar' ? 'الشخصيات الثانوية' : 'Secondary Characters'}</div>
@@ -211,9 +214,8 @@ const GeneratorForm = () => {
                                     <div className={`flex items-center gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}><Volume2 className="w-3.5 h-3.5 text-cyan-500/60" /><span className="text-xs font-semibold text-zinc-400">{safeT('audioSettings', 'Audio')}</span></div>
                                     <Toggle active={audioEnabled} onChange={setAudioEnabled} purple />
                                 </div>
-                                {audioEnabled && (<div className="grid grid-cols-1 sm:grid-cols-2 gap-3" style={{ animation: 'slideUp 0.15s ease-out' }}>
+                                {audioEnabled && (<div style={{ animation: 'slideUp 0.15s ease-out' }}>
                                     <FormField label={safeT('voiceTone', 'Voice Tone')} icon={Mic} isRTL={isRTL}><Select value={generatorInputs?.voiceTone || 'Professional'} onChange={(v) => updateGeneratorInput('voiceTone', v)} options={options.voiceTones} isRTL={isRTL} /></FormField>
-                                    <FormField label={safeT('videoLanguage', 'Language')} icon={Languages} isRTL={isRTL}><Select value={generatorInputs?.videoLanguage || 'Egyptian (Masri)'} onChange={(v) => updateGeneratorInput('videoLanguage', v)} options={options.videoLanguages} isRTL={isRTL} /></FormField>
                                 </div>)}
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
