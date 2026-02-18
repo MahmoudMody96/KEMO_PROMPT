@@ -54,12 +54,30 @@ const TextArea = ({ value, onChange, placeholder, rows = 3 }) => (
 
 const Select = ({ value = '', onChange, options = [], isRTL, placeholder }) => {
     const [isOpen, setIsOpen] = useState(false);
+    const [filter, setFilter] = useState('');
     const triggerRef = useRef(null);
+    const searchRef = useRef(null);
     const [menuPos, setMenuPos] = useState({ top: 0, left: 0, width: 0 });
-    useEffect(() => { if (isOpen && triggerRef.current) { const r = triggerRef.current.getBoundingClientRect(); setMenuPos({ top: r.bottom + 4, left: r.left, width: r.width }); } }, [isOpen]);
+    useEffect(() => { if (isOpen && triggerRef.current) { const r = triggerRef.current.getBoundingClientRect(); setMenuPos({ top: r.bottom + 4, left: r.left, width: r.width }); } if (isOpen) { setFilter(''); setTimeout(() => searchRef.current?.focus(), 50); } }, [isOpen]);
+    useEffect(() => { if (!isOpen) return; const onKey = (e) => { if (e.key === 'Escape') setIsOpen(false); }; window.addEventListener('keydown', onKey); return () => window.removeEventListener('keydown', onKey); }, [isOpen]);
     const getLabel = () => { if (!value) return ''; for (const opt of options) { if (opt.group && opt.items) { const f = opt.items.find(i => i.value === value); if (f) return f.label || f.value; } else if (opt.value === value) return opt.label || opt.value; } return value; };
     const handleSelect = (val) => { onChange(val); setIsOpen(false); };
     const groupGradients = ['from-blue-500/10 to-indigo-500/10', 'from-emerald-500/10 to-teal-500/10', 'from-orange-500/10 to-amber-500/10', 'from-purple-500/10 to-pink-500/10', 'from-cyan-500/10 to-sky-500/10', 'from-rose-500/10 to-red-500/10'];
+
+    // Count total options for search threshold
+    const totalOpts = options.reduce((n, o) => n + (o.group && o.items ? o.items.length : 1), 0);
+    const showSearch = totalOpts >= 6;
+    const f = filter.toLowerCase();
+
+    // Filter options
+    const filteredOptions = f ? options.map(opt => {
+        if (opt.group && opt.items) {
+            const fi = opt.items.filter(i => (i.label || i.value || '').toLowerCase().includes(f));
+            return fi.length > 0 ? { ...opt, items: fi } : null;
+        }
+        return (opt.label || opt.value || '').toLowerCase().includes(f) ? opt : null;
+    }).filter(Boolean) : options;
+
     return (
         <div className="relative">
             <div ref={triggerRef} onClick={() => setIsOpen(!isOpen)} className={`h-9 w-full rounded-lg bg-bg1 border px-3 text-[13px] flex items-center justify-between cursor-pointer transition-all ${isOpen ? 'border-primary ring-2 ring-primary/25' : 'border-border dark:border-white/[0.08]'}`} dir="auto">
@@ -67,23 +85,31 @@ const Select = ({ value = '', onChange, options = [], isRTL, placeholder }) => {
                 <ChevronDown className={`w-3.5 h-3.5 text-muted flex-shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
             </div>
             {isOpen && ReactDOM.createPortal(<><div className="fixed inset-0 z-[9990]" onClick={() => setIsOpen(false)} />
-                <div className="fixed z-[9991] rounded-xl shadow-[0_12px_28px_rgba(0,0,0,0.35)] max-h-[320px] overflow-y-auto animate-scale-in p-1.5 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent" style={{ top: menuPos.top, left: menuPos.left, width: menuPos.width, background: '#151C31', border: '1px solid rgba(255,255,255,0.08)', backdropFilter: 'blur(6px)' }}>
-                    {options.map((opt, idx) => {
-                        if (opt.group && opt.items) {
-                            const gc = groupGradients[idx % groupGradients.length]; return (
-                                <div key={idx} className={`mb-2 rounded-lg border border-white/5 overflow-hidden bg-gradient-to-br ${gc}`}>
-                                    <div className="px-3 py-1.5 text-[10px] font-bold text-white/50 uppercase tracking-wider bg-black/20 border-b border-white/5">{opt.group}</div>
-                                    <div className="p-1">{opt.items.map((item, i) => (
-                                        <div key={i} onClick={() => handleSelect(item.value)} className={`px-3 py-2 text-sm rounded-md cursor-pointer transition-all duration-150 flex items-center justify-between ${value === item.value ? 'bg-primary/20 text-primary font-semibold' : 'text-text2 hover:bg-[rgba(108,92,255,0.12)] hover:text-white'}`}>
-                                            <span>{item.label || item.value}</span>{value === item.value && <Check className="w-3.5 h-3.5" />}
-                                        </div>
-                                    ))}</div>
-                                </div>);
-                        }
-                        return (<div key={idx} onClick={() => handleSelect(opt.value)} className={`px-3 py-2.5 text-sm rounded-lg cursor-pointer transition-all duration-150 flex items-center justify-between mb-1 ${value === opt.value ? 'bg-primary/20 text-primary font-semibold' : 'text-text2 hover:bg-[rgba(108,92,255,0.12)] hover:text-white'}`}>
-                            <span>{opt.label || opt.value}</span>{value === opt.value && <Check className="w-3.5 h-3.5" />}
-                        </div>);
-                    })}
+                <div className="fixed z-[9991] rounded-xl shadow-[0_12px_28px_rgba(0,0,0,0.35)] max-h-[320px] overflow-hidden flex flex-col animate-scale-in" style={{ top: menuPos.top, left: menuPos.left, width: menuPos.width, background: '#151C31', border: '1px solid rgba(255,255,255,0.08)', backdropFilter: 'blur(6px)' }}>
+                    {showSearch && (
+                        <div className="sticky top-0 z-10 px-2 pt-2 pb-1.5" style={{ background: '#151C31', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                            <input ref={searchRef} type="text" value={filter} onChange={(e) => setFilter(e.target.value)} placeholder={isRTL ? '🔍 بحث...' : '🔍 Search...'} className="w-full h-7 px-2.5 rounded-md text-xs text-white placeholder-white/30 outline-none" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)' }} dir="auto" />
+                        </div>
+                    )}
+                    <div className="overflow-y-auto p-1.5 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+                        {filteredOptions.length === 0 && <div className="px-3 py-4 text-xs text-white/30 text-center">{isRTL ? 'لا توجد نتائج' : 'No results'}</div>}
+                        {filteredOptions.map((opt, idx) => {
+                            if (opt.group && opt.items) {
+                                const gc = groupGradients[idx % groupGradients.length]; return (
+                                    <div key={idx} className={`mb-2 rounded-lg border border-white/5 overflow-hidden bg-gradient-to-br ${gc}`}>
+                                        <div className="px-3 py-1.5 text-[10px] font-bold text-white/50 uppercase tracking-wider bg-black/20 border-b border-white/5">{opt.group}</div>
+                                        <div className="p-1">{opt.items.map((item, i) => (
+                                            <div key={i} onClick={() => handleSelect(item.value)} className={`px-3 py-2 text-sm rounded-md cursor-pointer transition-all duration-150 flex items-center justify-between ${value === item.value ? 'bg-primary/20 text-primary font-semibold' : 'text-text2 hover:bg-[rgba(108,92,255,0.12)] hover:text-white'}`}>
+                                                <span>{item.label || item.value}</span>{value === item.value && <Check className="w-3.5 h-3.5" />}
+                                            </div>
+                                        ))}</div>
+                                    </div>);
+                            }
+                            return (<div key={idx} onClick={() => handleSelect(opt.value)} className={`px-3 py-2.5 text-sm rounded-lg cursor-pointer transition-all duration-150 flex items-center justify-between mb-1 ${value === opt.value ? 'bg-primary/20 text-primary font-semibold' : 'text-text2 hover:bg-[rgba(108,92,255,0.12)] hover:text-white'}`}>
+                                <span>{opt.label || opt.value}</span>{value === opt.value && <Check className="w-3.5 h-3.5" />}
+                            </div>);
+                        })}
+                    </div>
                 </div></>, document.body)}
         </div>
     );
