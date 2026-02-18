@@ -20,7 +20,7 @@ const Toggle = ({ active, onChange, purple }) => (
 );
 
 const VisualSelector = ({ options = [], value, onChange, isRTL }) => (
-    <div className="flex gap-1.5" dir={isRTL ? 'rtl' : 'ltr'}>
+    <div className="flex flex-wrap gap-1.5" dir={isRTL ? 'rtl' : 'ltr'}>
         {options.map((opt) => {
             const v = opt?.value || opt; const l = opt?.label || opt; return (
                 <button key={v} onClick={() => onChange?.(v)} className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all duration-200 border ${value === v ? 'bg-primary/20 border-primary/40 text-primary shadow-sm shadow-primary/10' : 'bg-bg1/50 border-border text-text2 hover:bg-bg1 hover:text-text1'}`}>{l}</button>
