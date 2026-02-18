@@ -14,7 +14,7 @@ const VARIANTS = {
 
 // --- Build LemonSqueezy checkout URL ---
 function buildCheckoutUrl(variantId, userId, userEmail) {
-    const baseUrl = `https://kemo-prompt.lemonsqueezy.com/checkout/buy/${variantId}`;
+    const baseUrl = `https://kemoprompt.lemonsqueezy.com/checkout/buy/${variantId}`;
     const params = new URLSearchParams();
 
     // Embed overlay parameter
