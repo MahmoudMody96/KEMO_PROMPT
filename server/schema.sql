@@ -15,11 +15,12 @@ CREATE TABLE public.profiles (
     email TEXT NOT NULL,
     display_name TEXT DEFAULT '',
     avatar_url TEXT DEFAULT '',
-    plan TEXT DEFAULT 'free' CHECK (plan IN ('free', 'pro', 'enterprise')),
+    plan TEXT DEFAULT 'free' CHECK (plan IN ('free', 'basic', 'pro', 'enterprise')),
     credits_remaining INTEGER DEFAULT 20,
     credits_used INTEGER DEFAULT 0,
-    stripe_customer_id TEXT,
-    stripe_subscription_id TEXT,
+    lemon_customer_id TEXT,
+    lemon_subscription_id TEXT,
+    lemon_order_id TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -98,7 +99,7 @@ CREATE TABLE public.credit_transactions (
         'refund', 'admin_adjustment'
     )),
     description TEXT DEFAULT '',
-    stripe_payment_id TEXT DEFAULT NULL,
+    lemon_order_id TEXT DEFAULT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 

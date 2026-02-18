@@ -1,12 +1,72 @@
 // src/components/pages/PricingPage.jsx
-import React, { useState } from 'react';
+// LemonSqueezy checkout overlay integration
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAppContext } from '../../context/AppContext';
-import { Check, X, Sparkles, Crown, Zap, Rocket, ArrowRight, Star } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
+import { Check, X, Sparkles, Crown, Zap, Rocket, ArrowRight, Star, ExternalLink } from 'lucide-react';
+
+// --- LemonSqueezy Variant IDs (from .env) ---
+const VARIANTS = {
+    basic: import.meta.env.VITE_LEMON_VARIANT_BASIC || '1318412',
+    pro: import.meta.env.VITE_LEMON_VARIANT_PRO || '1318421',
+    premium: import.meta.env.VITE_LEMON_VARIANT_PREMIUM || '1318422',
+};
+
+// --- Build LemonSqueezy checkout URL ---
+function buildCheckoutUrl(variantId, userId, userEmail) {
+    const baseUrl = `https://kemo-prompt.lemonsqueezy.com/checkout/buy/${variantId}`;
+    const params = new URLSearchParams();
+
+    // Embed overlay parameter
+    params.set('embed', '1');
+
+    // Pass user data for webhook fulfillment
+    if (userId) params.set('checkout[custom][user_id]', userId);
+    if (userEmail) params.set('checkout[email]', userEmail);
+
+    // UI customization
+    params.set('checkout[button_color]', '#6366f1');
+
+    return `${baseUrl}?${params.toString()}`;
+}
 
 const PricingPage = () => {
     const { language, isRTL } = useAppContext();
+    const { user } = useAuth();
     const isAr = language === 'ar';
-    const [annual, setAnnual] = useState(true);
+    const [annual, setAnnual] = useState(false);
+    const [loadingPlan, setLoadingPlan] = useState(null);
+
+    // Initialize LemonSqueezy when component mounts
+    useEffect(() => {
+        if (typeof window !== 'undefined' && window.createLemonSqueezy) {
+            window.createLemonSqueezy();
+        }
+    }, []);
+
+    // Handle checkout
+    const handleCheckout = useCallback((planId) => {
+        const variantId = VARIANTS[planId];
+        if (!variantId) return;
+
+        setLoadingPlan(planId);
+
+        const checkoutUrl = buildCheckoutUrl(
+            variantId,
+            user?.id || '',
+            user?.email || ''
+        );
+
+        // Try overlay first, fallback to redirect
+        if (window.LemonSqueezy) {
+            window.LemonSqueezy.Url.Open(checkoutUrl);
+            setTimeout(() => setLoadingPlan(null), 1500);
+        } else {
+            // Fallback: direct redirect
+            window.open(checkoutUrl.replace('embed=1', ''), '_blank');
+            setTimeout(() => setLoadingPlan(null), 1500);
+        }
+    }, [user]);
 
     const plans = [
         {
@@ -21,95 +81,92 @@ const PricingPage = () => {
             descEn: 'Get started with basic features',
             descAr: 'ابدأ مع الميزات الأساسية',
             features: [
-                { en: '5 blueprints / month', ar: '5 مخططات / شهر', included: true },
-                { en: '3 prompt extractions / month', ar: '3 استخراجات / شهر', included: true },
-                { en: '2 trend scans / month', ar: '2 مسح ترندات / شهر', included: true },
+                { en: '20 credits on signup', ar: '20 كريديت عند التسجيل', included: true },
                 { en: 'Basic Prompt Architect', ar: 'مهندس البرومبت الأساسي', included: true },
                 { en: 'Secret Vault (view only)', ar: 'المكتبة السرية (عرض فقط)', included: true },
                 { en: 'Priority support', ar: 'دعم أولوية', included: false },
-                { en: 'API access', ar: 'وصول API', included: false },
-                { en: 'Team collaboration', ar: 'تعاون الفريق', included: false },
+                { en: 'Unlimited generations', ar: 'توليدات غير محدودة', included: false },
             ],
             ctaEn: 'Current Plan',
             ctaAr: 'الخطة الحالية',
             popular: false,
+            lemonVariant: null, // No checkout for free
         },
         {
-            id: 'starter',
-            nameEn: 'Starter',
-            nameAr: 'المبتدئ',
+            id: 'basic',
+            nameEn: 'Basic',
+            nameAr: 'الأساسي',
             icon: Sparkles,
-            priceMonthly: 9,
-            priceAnnual: 7,
+            priceMonthly: 6.99,
+            priceAnnual: 6.99,
             color: '#3b82f6',
             gradient: 'from-blue-500 to-indigo-600',
             descEn: 'For individual creators',
             descAr: 'لصنّاع المحتوى الأفراد',
             features: [
-                { en: '50 blueprints / month', ar: '50 مخطط / شهر', included: true },
-                { en: '30 prompt extractions / month', ar: '30 استخراج / شهر', included: true },
-                { en: '20 trend scans / month', ar: '20 مسح ترندات / شهر', included: true },
+                { en: '200 credits / month', ar: '200 كريديت / شهر', included: true },
                 { en: 'Full Prompt Architect', ar: 'مهندس البرومبت الكامل', included: true },
                 { en: 'Full Secret Vault access', ar: 'وصول كامل للمكتبة السرية', included: true },
+                { en: 'Trend Hunter access', ar: 'صيّاد الترندات', included: true },
                 { en: 'Email support', ar: 'دعم بالبريد', included: true },
                 { en: 'API access', ar: 'وصول API', included: false },
-                { en: 'Team collaboration', ar: 'تعاون الفريق', included: false },
             ],
-            ctaEn: 'Get Started',
-            ctaAr: 'ابدأ الآن',
+            ctaEn: 'Subscribe — Basic',
+            ctaAr: 'اشترك — الأساسي',
             popular: false,
+            lemonVariant: 'basic',
         },
         {
             id: 'pro',
             nameEn: 'Professional',
             nameAr: 'المحترف',
             icon: Crown,
-            priceMonthly: 29,
-            priceAnnual: 24,
+            priceMonthly: 14.99,
+            priceAnnual: 14.99,
             color: '#f59e0b',
             gradient: 'from-amber-500 to-orange-600',
             descEn: 'For serious content producers',
             descAr: 'لمنتجي المحتوى المحترفين',
             features: [
+                { en: '500 credits / month', ar: '500 كريديت / شهر', included: true },
                 { en: 'Unlimited blueprints', ar: 'مخططات غير محدودة', included: true },
                 { en: 'Unlimited extractions', ar: 'استخراجات غير محدودة', included: true },
-                { en: 'Unlimited trend scans', ar: 'مسح ترندات غير محدود', included: true },
                 { en: 'Advanced Prompt Architect', ar: 'مهندس البرومبت المتقدم', included: true },
-                { en: 'Full Secret Vault + custom', ar: 'المكتبة السرية + تخصيص', included: true },
                 { en: 'Priority support 24/7', ar: 'دعم أولوية ٢٤/٧', included: true },
                 { en: 'API access', ar: 'وصول API', included: true },
-                { en: 'Team collaboration', ar: 'تعاون الفريق', included: false },
             ],
-            ctaEn: 'Upgrade to Pro',
-            ctaAr: 'ترقية للمحترف',
+            ctaEn: 'Subscribe — Pro',
+            ctaAr: 'اشترك — المحترف',
             popular: true,
+            lemonVariant: 'pro',
         },
         {
-            id: 'enterprise',
-            nameEn: 'Enterprise',
-            nameAr: 'المؤسسات',
+            id: 'premium',
+            nameEn: 'Premium',
+            nameAr: 'المميز',
             icon: Rocket,
-            priceMonthly: 99,
-            priceAnnual: 79,
+            priceMonthly: 39.99,
+            priceAnnual: 39.99,
             color: '#8b5cf6',
             gradient: 'from-violet-500 to-purple-700',
             descEn: 'For teams and agencies',
             descAr: 'للفرق والوكالات',
             features: [
+                { en: 'Unlimited credits', ar: 'كريديت غير محدود', included: true },
                 { en: 'Everything in Pro', ar: 'كل ميزات المحترف', included: true },
-                { en: 'Unlimited everything', ar: 'كل شيء غير محدود', included: true },
                 { en: 'Custom AI fine-tuning', ar: 'ضبط ذكاء اصطناعي مخصص', included: true },
                 { en: 'White-label exports', ar: 'تصدير بعلامتك التجارية', included: true },
-                { en: 'Custom integrations', ar: 'تكاملات مخصصة', included: true },
                 { en: 'Dedicated account manager', ar: 'مدير حساب مخصص', included: true },
-                { en: 'Full API + Webhooks', ar: 'واجهة برمجة + Webhooks', included: true },
                 { en: 'Up to 25 team members', ar: 'حتى 25 عضو فريق', included: true },
             ],
-            ctaEn: 'Contact Sales',
-            ctaAr: 'تواصل مع المبيعات',
+            ctaEn: 'Subscribe — Premium',
+            ctaAr: 'اشترك — المميز',
             popular: false,
+            lemonVariant: 'premium',
         },
     ];
+
+    const currentPlan = user?.plan || 'free';
 
     return (
         <div className="w-full max-w-6xl mx-auto pb-10" dir={isRTL ? 'rtl' : 'ltr'}>
@@ -127,33 +184,26 @@ const PricingPage = () => {
                     {isAr ? 'ابدأ مجاناً وقم بالترقية متى احتجت لمميزات أكثر' : 'Start free and upgrade when you need more power'}
                 </p>
 
-                {/* Billing Toggle */}
-                <div className="inline-flex items-center gap-3 px-4 py-2 rounded-full"
-                    style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
-                    <span className={`text-xs font-semibold ${!annual ? 'text-white' : 'text-zinc-500'}`}>
-                        {isAr ? 'شهري' : 'Monthly'}
-                    </span>
-                    <button onClick={() => setAnnual(!annual)}
-                        className="relative w-12 h-6 rounded-full transition-colors"
-                        style={{ background: annual ? 'linear-gradient(135deg, #f59e0b, #d97706)' : 'rgba(255,255,255,0.15)' }}>
-                        <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-md transition-all ${annual ? 'left-6' : 'left-0.5'}`} />
-                    </button>
-                    <span className={`text-xs font-semibold ${annual ? 'text-white' : 'text-zinc-500'}`}>
-                        {isAr ? 'سنوي' : 'Annual'}
-                    </span>
-                    {annual && (
-                        <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/15 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                            {isAr ? 'وفّر 20%' : 'Save 20%'}
+                {/* Current plan badge */}
+                {user && (
+                    <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full mb-4"
+                        style={{ background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.2)' }}>
+                        <span className="text-xs text-indigo-300">
+                            {isAr ? 'خطتك الحالية:' : 'Current plan:'}{' '}
+                            <strong className="text-indigo-200 uppercase">{currentPlan}</strong>
                         </span>
-                    )}
-                </div>
+                    </div>
+                )}
             </div>
 
             {/* Plans Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {plans.map((plan) => {
-                    const price = annual ? plan.priceAnnual : plan.priceMonthly;
+                    const price = plan.priceMonthly;
                     const PlanIcon = plan.icon;
+                    const isCurrentPlan = currentPlan === plan.id;
+                    const isLoading = loadingPlan === plan.id;
+
                     return (
                         <div key={plan.id}
                             className={`relative rounded-2xl p-5 transition-all duration-300 hover:translate-y-[-4px] flex flex-col ${plan.popular ? 'ring-2' : ''}`}
@@ -218,9 +268,11 @@ const PricingPage = () => {
                                 ))}
                             </div>
 
-                            {/* CTA */}
+                            {/* CTA Button */}
                             <button
-                                className={`w-full py-2.5 rounded-xl text-sm font-bold transition-all hover:opacity-90 flex items-center justify-center gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}
+                                onClick={() => plan.lemonVariant && handleCheckout(plan.lemonVariant)}
+                                disabled={!plan.lemonVariant || isCurrentPlan || isLoading}
+                                className={`w-full py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${isRTL ? 'flex-row-reverse' : ''} ${(!plan.lemonVariant || isCurrentPlan) ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] cursor-pointer'}`}
                                 style={{
                                     background: plan.popular
                                         ? `linear-gradient(135deg, ${plan.color}, ${plan.color}cc)`
@@ -229,8 +281,16 @@ const PricingPage = () => {
                                     border: `1px solid ${plan.popular ? 'transparent' : `${plan.color}25`}`,
                                 }}
                             >
-                                {isAr ? plan.ctaAr : plan.ctaEn}
-                                <ArrowRight className={`w-3.5 h-3.5 ${isRTL ? 'rotate-180' : ''}`} />
+                                {isLoading ? (
+                                    <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                                ) : isCurrentPlan ? (
+                                    isAr ? '✓ خطتك الحالية' : '✓ Current Plan'
+                                ) : (
+                                    <>
+                                        {isAr ? plan.ctaAr : plan.ctaEn}
+                                        <ExternalLink className={`w-3.5 h-3.5 ${isRTL ? 'rotate-0' : ''}`} />
+                                    </>
+                                )}
                             </button>
                         </div>
                     );
@@ -243,6 +303,9 @@ const PricingPage = () => {
                     {isAr
                         ? '✨ جميع الخطط تشمل تحديثات مجانية • بدون عقود • يمكنك الإلغاء في أي وقت'
                         : '✨ All plans include free updates • No contracts • Cancel anytime'}
+                </p>
+                <p className="text-[10px] text-zinc-600 mt-2">
+                    {isAr ? '🔒 الدفع الآمن عبر LemonSqueezy' : '🔒 Secure payments via LemonSqueezy'}
                 </p>
             </div>
         </div>

@@ -183,6 +183,7 @@ const Sidebar = ({ onNavClick }) => {
     { id: 'trendhunter', labelKey: 'trendHunter', descKey: 'trendHunterDesc', icon: Flame, color: 'indigo' },
     { id: 'promptarchitect', labelKey: 'promptArchitect', descKey: 'promptArchitectDesc', icon: Wand2, color: 'violet' },
     { id: 'secretvault', labelKey: 'secretVault', descKey: 'secretVaultDesc', icon: Lock, color: 'amber' },
+    { id: 'pricing', labelKey: 'pricing', descKey: 'pricingDesc', icon: DollarSign, color: 'emerald' },
   ];
 
   const initial = user ? (user.display_name || user.email || 'G')[0].toUpperCase() : 'G';
