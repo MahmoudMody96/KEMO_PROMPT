@@ -1,9 +1,9 @@
 // src/components/pages/PricingPage.jsx
-// LemonSqueezy checkout overlay integration
+// LemonSqueezy checkout overlay integration (API-based)
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAppContext } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
-import { Check, X, Sparkles, Crown, Zap, Rocket, ArrowRight, Star, ExternalLink } from 'lucide-react';
+import { Check, X, Sparkles, Crown, Zap, Rocket, ArrowRight, Star, ExternalLink, Loader2 } from 'lucide-react';
 
 // --- LemonSqueezy Variant IDs (from .env) ---
 const VARIANTS = {
@@ -12,61 +12,62 @@ const VARIANTS = {
     premium: import.meta.env.VITE_LEMON_VARIANT_PREMIUM || '1318422',
 };
 
-// --- Build LemonSqueezy checkout URL ---
-function buildCheckoutUrl(variantId, userId, userEmail) {
-    const baseUrl = `https://kemoprompt.lemonsqueezy.com/checkout/buy/${variantId}`;
-    const params = new URLSearchParams();
-
-    // Embed overlay parameter
-    params.set('embed', '1');
-
-    // Pass user data for webhook fulfillment
-    if (userId) params.set('checkout[custom][user_id]', userId);
-    if (userEmail) params.set('checkout[email]', userEmail);
-
-    // UI customization
-    params.set('checkout[button_color]', '#6366f1');
-
-    return `${baseUrl}?${params.toString()}`;
-}
-
 const PricingPage = () => {
     const { language, isRTL } = useAppContext();
     const { user } = useAuth();
     const isAr = language === 'ar';
-    const [annual, setAnnual] = useState(false);
     const [loadingPlan, setLoadingPlan] = useState(null);
+    const [error, setError] = useState(null);
 
-    // Initialize LemonSqueezy when component mounts
+    // Initialize LemonSqueezy overlay when component mounts
     useEffect(() => {
         if (typeof window !== 'undefined' && window.createLemonSqueezy) {
             window.createLemonSqueezy();
         }
     }, []);
 
-    // Handle checkout
-    const handleCheckout = useCallback((planId) => {
+    // Handle checkout via API
+    const handleCheckout = useCallback(async (planId) => {
         const variantId = VARIANTS[planId];
         if (!variantId) return;
 
         setLoadingPlan(planId);
+        setError(null);
 
-        const checkoutUrl = buildCheckoutUrl(
-            variantId,
-            user?.id || '',
-            user?.email || ''
-        );
+        try {
+            // Call our serverless function to create a checkout
+            const res = await fetch('/api/create-checkout', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    variantId,
+                    userId: user?.id || '',
+                    userEmail: user?.email || '',
+                }),
+            });
 
-        // Try overlay first, fallback to redirect
-        if (window.LemonSqueezy) {
-            window.LemonSqueezy.Url.Open(checkoutUrl);
-            setTimeout(() => setLoadingPlan(null), 1500);
-        } else {
-            // Fallback: direct redirect
-            window.open(checkoutUrl.replace('embed=1', ''), '_blank');
-            setTimeout(() => setLoadingPlan(null), 1500);
+            const data = await res.json();
+
+            if (!res.ok) {
+                throw new Error(data.error || 'Failed to create checkout');
+            }
+
+            if (data.url) {
+                // Try overlay first
+                if (window.LemonSqueezy) {
+                    window.LemonSqueezy.Url.Open(data.url);
+                } else {
+                    // Fallback: open in new tab
+                    window.open(data.url, '_blank');
+                }
+            }
+        } catch (err) {
+            console.error('Checkout error:', err);
+            setError(isAr ? 'حدث خطأ أثناء فتح صفحة الدفع' : 'Error opening checkout');
+        } finally {
+            setTimeout(() => setLoadingPlan(null), 1000);
         }
-    }, [user]);
+    }, [user, isAr]);
 
     const plans = [
         {
@@ -75,9 +76,7 @@ const PricingPage = () => {
             nameAr: 'مجاني',
             icon: Zap,
             priceMonthly: 0,
-            priceAnnual: 0,
             color: '#6b7280',
-            gradient: 'from-zinc-600 to-zinc-700',
             descEn: 'Get started with basic features',
             descAr: 'ابدأ مع الميزات الأساسية',
             features: [
@@ -90,7 +89,7 @@ const PricingPage = () => {
             ctaEn: 'Current Plan',
             ctaAr: 'الخطة الحالية',
             popular: false,
-            lemonVariant: null, // No checkout for free
+            lemonVariant: null,
         },
         {
             id: 'basic',
@@ -98,9 +97,7 @@ const PricingPage = () => {
             nameAr: 'الأساسي',
             icon: Sparkles,
             priceMonthly: 6.99,
-            priceAnnual: 6.99,
             color: '#3b82f6',
-            gradient: 'from-blue-500 to-indigo-600',
             descEn: 'For individual creators',
             descAr: 'لصنّاع المحتوى الأفراد',
             features: [
@@ -122,9 +119,7 @@ const PricingPage = () => {
             nameAr: 'المحترف',
             icon: Crown,
             priceMonthly: 14.99,
-            priceAnnual: 14.99,
             color: '#f59e0b',
-            gradient: 'from-amber-500 to-orange-600',
             descEn: 'For serious content producers',
             descAr: 'لمنتجي المحتوى المحترفين',
             features: [
@@ -146,9 +141,7 @@ const PricingPage = () => {
             nameAr: 'المميز',
             icon: Rocket,
             priceMonthly: 39.99,
-            priceAnnual: 39.99,
             color: '#8b5cf6',
-            gradient: 'from-violet-500 to-purple-700',
             descEn: 'For teams and agencies',
             descAr: 'للفرق والوكالات',
             features: [
@@ -192,6 +185,14 @@ const PricingPage = () => {
                             {isAr ? 'خطتك الحالية:' : 'Current plan:'}{' '}
                             <strong className="text-indigo-200 uppercase">{currentPlan}</strong>
                         </span>
+                    </div>
+                )}
+
+                {/* Error banner */}
+                {error && (
+                    <div className="inline-block px-4 py-2 rounded-lg text-xs text-red-300 mb-4"
+                        style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)' }}>
+                        {error}
                     </div>
                 )}
             </div>
@@ -282,13 +283,16 @@ const PricingPage = () => {
                                 }}
                             >
                                 {isLoading ? (
-                                    <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                                    <>
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                        {isAr ? 'جاري التحميل...' : 'Loading...'}
+                                    </>
                                 ) : isCurrentPlan ? (
                                     isAr ? '✓ خطتك الحالية' : '✓ Current Plan'
                                 ) : (
                                     <>
                                         {isAr ? plan.ctaAr : plan.ctaEn}
-                                        <ExternalLink className={`w-3.5 h-3.5 ${isRTL ? 'rotate-0' : ''}`} />
+                                        <ExternalLink className="w-3.5 h-3.5" />
                                     </>
                                 )}
                             </button>
@@ -297,7 +301,7 @@ const PricingPage = () => {
                 })}
             </div>
 
-            {/* FAQ / Trust */}
+            {/* Trust section */}
             <div className="mt-10 text-center">
                 <p className="text-xs text-zinc-500">
                     {isAr
