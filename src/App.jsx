@@ -88,7 +88,7 @@ const UserProfileModal = ({ onClose }) => {
         style={{ animation: 'fadeIn 0.15s ease-out' }} />
       <div className="fixed inset-0 z-[9999] flex items-center justify-center pointer-events-none">
         <div className="pointer-events-auto w-[420px] max-w-[92vw] rounded-2xl overflow-hidden"
-          style={{ animation: 'fadeIn 0.2s ease-out', background: 'rgba(15,15,25,0.97)', backdropFilter: 'blur(20px)', border: '1px solid rgba(99,102,241,0.2)', boxShadow: '0 8px 40px rgba(0,0,0,0.5)' }}>
+          style={{ animation: 'fadeIn 0.2s ease-out', background: 'var(--modal-bg)', backdropFilter: 'blur(20px)', border: '1px solid rgba(99,102,241,0.2)', boxShadow: 'var(--dropdown-shadow)' }}>
 
           {/* Header */}
           <div className="p-5 border-b border-white/5" style={{ background: 'linear-gradient(135deg, rgba(99,102,241,0.08), rgba(139,92,246,0.04))' }}>
@@ -426,8 +426,8 @@ const Header = () => {
       {/* Full-width SaaS navbar */}
       <div className="w-full flex items-center justify-center py-2.5 px-6"
         style={{
-          background: 'linear-gradient(180deg, rgba(255,255,255,0.025) 0%, transparent 100%)',
-          borderBottom: '1px solid rgba(255,255,255,0.04)',
+          background: 'linear-gradient(180deg, var(--overlay-2) 0%, transparent 100%)',
+          borderBottom: '1px solid var(--border-color)',
         }}>
         <nav className={`hidden md:flex items-center gap-8 ${isRTL ? 'flex-row-reverse' : ''}`}>
           {navLinks.map((link) => {
@@ -468,12 +468,12 @@ const Header = () => {
                       style={{
                         background: 'rgba(15,15,25,0.97)',
                         backdropFilter: 'blur(20px)',
-                        border: '1px solid rgba(255,255,255,0.08)',
-                        boxShadow: '0 16px 48px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.03)',
+                        border: '1px solid var(--border-color)',
+                        boxShadow: 'var(--dropdown-shadow)',
                         animation: 'fadeIn 0.15s ease-out',
                       }}
                     >
-                      <div className={`px-4 py-3 border-b ${isRTL ? 'text-right' : ''}`} style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
+                      <div className={`px-4 py-3 border-b ${isRTL ? 'text-right' : ''}`} style={{ borderColor: 'var(--border-color)' }}>
                         <p className="text-[11px] font-bold uppercase tracking-widest" style={{ color: '#6366f1' }}>
                           {isAr ? 'أدوات المنصة' : 'Platform Tools'}
                         </p>
@@ -507,7 +507,7 @@ const Header = () => {
                           );
                         })}
                       </div>
-                      <div className="px-3 py-2.5 border-t" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
+                      <div className="px-3 py-2.5 border-t" style={{ borderColor: 'var(--border-color)' }}>
                         <button
                           onClick={() => { setActiveTab('services'); setShowServicesMenu(false); }}
                           className={`w-full flex items-center justify-center gap-1.5 text-[12px] font-semibold text-indigo-400 hover:text-indigo-300 transition-colors ${isRTL ? 'flex-row-reverse' : ''}`}

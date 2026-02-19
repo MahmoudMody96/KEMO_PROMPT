@@ -44,7 +44,7 @@ const HeroBanner = ({ isRTL, onNavigate }) => {
 
             {/* Grid Pattern Overlay */}
             <div className="absolute inset-0 opacity-[0.03]" style={{
-                backgroundImage: 'linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)',
+                backgroundImage: 'linear-gradient(var(--overlay-10) 1px, transparent 1px), linear-gradient(90deg, var(--overlay-10) 1px, transparent 1px)',
                 backgroundSize: '40px 40px',
             }} />
 
@@ -90,8 +90,8 @@ const HeroBanner = ({ isRTL, onNavigate }) => {
                     ].map((pill, i) => (
                         <div key={i} className="flex items-center gap-2 px-3 py-1.5 rounded-full"
                             style={{
-                                background: 'rgba(255,255,255,0.04)',
-                                border: '1px solid rgba(255,255,255,0.08)',
+                                background: 'var(--overlay-4)',
+                                border: '1px solid var(--border-color)',
                             }}>
                             <pill.icon className={`w-3.5 h-3.5 text-${pill.color}-400`} />
                             <span className="text-xs text-zinc-300 font-medium">{pill.label}</span>
@@ -117,8 +117,8 @@ const HeroBanner = ({ isRTL, onNavigate }) => {
                         onClick={() => onNavigate('trendhunter')}
                         className="group flex items-center gap-2.5 px-5 py-3 rounded-xl text-sm font-semibold text-zinc-300 transition-all duration-300 hover:text-white hover:scale-[1.02]"
                         style={{
-                            background: 'rgba(255,255,255,0.05)',
-                            border: '1px solid rgba(255,255,255,0.1)',
+                            background: 'var(--overlay-5)',
+                            border: '1px solid var(--border-color)',
                         }}
                     >
                         <Flame className="w-4 h-4 text-orange-400" />

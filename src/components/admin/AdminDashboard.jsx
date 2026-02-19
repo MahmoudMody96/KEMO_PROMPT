@@ -181,7 +181,7 @@ const translations = {
 // ═══════════════════════════════════════
 const StatCard = ({ icon: Icon, label, value, color = '#818cf8', trend }) => (
     <div className="rounded-xl p-5 relative overflow-hidden group transition-all duration-300 hover:scale-[1.02]"
-        style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', boxShadow: '0 4px 20px rgba(0,0,0,0.15)' }}>
+        style={{ background: 'var(--overlay-3)', border: '1px solid var(--border-color)', boxShadow: '0 4px 20px rgba(0,0,0,0.15)' }}>
         <div className="flex items-start justify-between">
             <div>
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 mb-1">{label}</p>
@@ -387,8 +387,8 @@ const AdminDashboard = () => {
                     {sidebarItems.map(item => (
                         <button key={item.id} onClick={() => setActiveSection(item.id)}
                             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${activeSection === item.id
-                                    ? 'bg-indigo-600/15 text-indigo-400 border border-indigo-500/20'
-                                    : 'text-zinc-400 hover:text-zinc-200 hover:bg-white/5 border border-transparent'
+                                ? 'bg-indigo-600/15 text-indigo-400 border border-indigo-500/20'
+                                : 'text-zinc-400 hover:text-zinc-200 hover:bg-white/5 border border-transparent'
                                 }`}>
                             <item.icon className="w-4 h-4" />
                             {item.label}
@@ -469,7 +469,7 @@ const AdminDashboard = () => {
                             </div>
 
                             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                                <div className="lg:col-span-2 rounded-xl p-5" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                                <div className="lg:col-span-2 rounded-xl p-5" style={{ background: 'var(--overlay-3)', border: '1px solid var(--border-color)' }}>
                                     <h3 className="text-sm font-semibold text-zinc-300 mb-4 flex items-center gap-2">
                                         <Activity className="w-4 h-4 text-indigo-400" /> {tx.usageByAction}
                                     </h3>
@@ -492,7 +492,7 @@ const AdminDashboard = () => {
                                     </div>
                                 </div>
 
-                                <div className="rounded-xl p-5" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                                <div className="rounded-xl p-5" style={{ background: 'var(--overlay-3)', border: '1px solid var(--border-color)' }}>
                                     <h3 className="text-sm font-semibold text-zinc-300 mb-4 flex items-center gap-2">
                                         <Crown className="w-4 h-4 text-amber-400" /> {tx.planDistribution}
                                     </h3>
@@ -529,7 +529,7 @@ const AdminDashboard = () => {
                                 </div>
                             </div>
 
-                            <div className="mt-6 rounded-xl overflow-hidden" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                            <div className="mt-6 rounded-xl overflow-hidden" style={{ background: 'var(--overlay-3)', border: '1px solid var(--border-color)' }}>
                                 <div className="px-5 py-3 border-b border-white/5 flex items-center justify-between">
                                     <h3 className="text-sm font-semibold text-zinc-300 flex items-center gap-2">
                                         <Clock className="w-4 h-4 text-indigo-400" /> {tx.latestActivity}
@@ -560,7 +560,7 @@ const AdminDashboard = () => {
 
                     {/* ═══ USERS ═══ */}
                     {isSupabaseConfigured() && activeSection === 'users' && (
-                        <div className="rounded-xl overflow-hidden" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                        <div className="rounded-xl overflow-hidden" style={{ background: 'var(--overlay-3)', border: '1px solid var(--border-color)' }}>
                             <div className="p-4 border-b border-white/5 flex items-center gap-3">
                                 <div className="relative flex-1">
                                     <Search className={`absolute top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500 ${isRTL ? 'right-3' : 'left-3'}`} />
@@ -606,7 +606,7 @@ const AdminDashboard = () => {
                     {isSupabaseConfigured() && activeSection === 'analytics' && (
                         <>
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                                <div className="rounded-xl p-5" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                                <div className="rounded-xl p-5" style={{ background: 'var(--overlay-3)', border: '1px solid var(--border-color)' }}>
                                     <h3 className="text-sm font-semibold text-zinc-300 mb-4 flex items-center gap-2">
                                         <Crown className="w-4 h-4 text-amber-400" /> {tx.topUsersByUsage}
                                     </h3>
@@ -636,7 +636,7 @@ const AdminDashboard = () => {
                                     </div>
                                 </div>
 
-                                <div className="rounded-xl p-5" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                                <div className="rounded-xl p-5" style={{ background: 'var(--overlay-3)', border: '1px solid var(--border-color)' }}>
                                     <h3 className="text-sm font-semibold text-zinc-300 mb-4 flex items-center gap-2">
                                         <CreditCard className="w-4 h-4 text-emerald-400" /> {tx.creditOverview}
                                     </h3>
@@ -668,7 +668,7 @@ const AdminDashboard = () => {
                                 </div>
                             </div>
 
-                            <div className="rounded-xl p-5" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                            <div className="rounded-xl p-5" style={{ background: 'var(--overlay-3)', border: '1px solid var(--border-color)' }}>
                                 <h3 className="text-sm font-semibold text-zinc-300 mb-4 flex items-center gap-2">
                                     <Eye className="w-4 h-4 text-indigo-400" /> {tx.requestStatus}
                                 </h3>
@@ -710,7 +710,7 @@ const AdminDashboard = () => {
                     {/* ═══ SETTINGS ═══ */}
                     {activeSection === 'settings' && (
                         <div className="max-w-2xl space-y-6">
-                            <div className="rounded-xl p-5" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                            <div className="rounded-xl p-5" style={{ background: 'var(--overlay-3)', border: '1px solid var(--border-color)' }}>
                                 <h3 className="text-sm font-semibold text-zinc-300 mb-4 flex items-center gap-2">
                                     <Settings className="w-4 h-4 text-indigo-400" /> {tx.generalSettings}
                                 </h3>
@@ -728,7 +728,7 @@ const AdminDashboard = () => {
                                 </div>
                             </div>
 
-                            <div className="rounded-xl p-5" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                            <div className="rounded-xl p-5" style={{ background: 'var(--overlay-3)', border: '1px solid var(--border-color)' }}>
                                 <h3 className="text-sm font-semibold text-zinc-300 mb-4 flex items-center gap-2">
                                     <Server className="w-4 h-4 text-indigo-400" /> {tx.featureToggles}
                                 </h3>
@@ -748,7 +748,7 @@ const AdminDashboard = () => {
                                 </div>
                             </div>
 
-                            <div className="rounded-xl p-5" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                            <div className="rounded-xl p-5" style={{ background: 'var(--overlay-3)', border: '1px solid var(--border-color)' }}>
                                 <h3 className="text-sm font-semibold text-zinc-300 mb-4 flex items-center gap-2">
                                     <Wifi className="w-4 h-4 text-emerald-400" /> {tx.systemStatus}
                                 </h3>
@@ -773,7 +773,7 @@ const AdminDashboard = () => {
 
                     {/* ═══ ACTIVITY LOG ═══ */}
                     {isSupabaseConfigured() && activeSection === 'activity' && (
-                        <div className="rounded-xl overflow-hidden" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                        <div className="rounded-xl overflow-hidden" style={{ background: 'var(--overlay-3)', border: '1px solid var(--border-color)' }}>
                             <div className="p-4 border-b border-white/5 flex items-center gap-3">
                                 <Filter className="w-4 h-4 text-zinc-500" />
                                 {[{ k: 'all', l: tx.all }, { k: 'generate', l: tx.generate }, { k: 'brainstorm', l: tx.brainstorm }, { k: 'extract', l: tx.extract }, { k: 'trend_search', l: tx.trends }].map(f => (

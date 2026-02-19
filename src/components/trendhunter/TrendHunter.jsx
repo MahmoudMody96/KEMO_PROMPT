@@ -423,7 +423,7 @@ Apply this viral formula to my video.`;
                     {/* Header */}
                     <div className="flex items-center justify-between mb-5" style={{ flexDirection: isRTL ? 'row-reverse' : 'row' }}>
                         <div style={{ textAlign: isRTL ? 'right' : 'left' }}>
-                            <h2 className="text-xl font-bold text-white mb-1">
+                            <h2 className="text-xl font-bold text-text1 mb-1">
                                 🎯 {t('winningFormulas')} "{topic}"
                             </h2>
                             <div className="flex items-center gap-2 mt-1" style={{ flexDirection: isRTL ? 'row-reverse' : 'row' }}>
@@ -475,7 +475,7 @@ Apply this viral formula to my video.`;
                                     {/* Header: Title + Score + Structure */}
                                     <div className="flex justify-between items-start mb-3" style={{ flexDirection: isRTL ? 'row-reverse' : 'row' }}>
                                         <div className="flex-1" style={{ textAlign: isRTL ? 'right' : 'left' }}>
-                                            <h3 className="text-lg font-bold text-white group-hover:text-blue-400 transition-colors mb-1">
+                                            <h3 className="text-lg font-bold text-text1 group-hover:text-blue-400 transition-colors mb-1">
                                                 {trend.title}
                                             </h3>
                                             <div className="flex items-center gap-2 flex-wrap" style={{ flexDirection: isRTL ? 'row-reverse' : 'row' }}>
@@ -619,7 +619,7 @@ Apply this viral formula to my video.`;
                             </div>
                         </div>
 
-                        <h3 className="text-2xl font-bold text-white mb-2">{loadingMessage}</h3>
+                        <h3 className="text-2xl font-bold text-text1 mb-2">{loadingMessage}</h3>
                         <p className="text-muted">
                             {t('applyingStyle')} <span className="text-blue-400">"{selectedTrend?.title}"</span> {t('styleSuffix')}
                         </p>
@@ -641,7 +641,7 @@ Apply this viral formula to my video.`;
                                     {blueprint.trend_applied}
                                 </span>
                             </div>
-                            <h2 className="text-xl font-bold text-white">{blueprint.title}</h2>
+                            <h2 className="text-xl font-bold text-text1">{blueprint.title}</h2>
                         </div>
                         <div className="flex gap-2" style={{ flexDirection: isRTL ? 'row-reverse' : 'row' }}>
                             <button

@@ -8,27 +8,51 @@
     --bg-sidebar: #FFFFFF;
     --bg-surface: #FFFFFF;
     --bg-input: #FFFFFF;
-    --border-color: #E6EAF2;
+    --border-color: #E2E8F0;
     --text-primary: #1e293b;
-    --text-secondary: #64748b;
+    --text-secondary: #475569;
     --text-muted: #94a3b8;
-    --shadow-card: 0 8px 24px rgba(16, 24, 40, 0.06);
-    --shadow-glow: 0 6px 18px rgba(108, 92, 255, 0.25);
+    --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.06), 0 4px 16px rgba(0, 0, 0, 0.04);
+    --shadow-glow: 0 6px 18px rgba(108, 92, 255, 0.18);
     --primary: #6C5CFF;
     --primary-hover: #4DA3FF;
-    --bg-hover: #F1F4FA;
+    --bg-hover: #F1F5F9;
     --bg-active: rgba(108, 92, 255, 0.08);
+
     /* Theme-aware overlays */
-    --overlay-subtle: rgba(0, 0, 0, 0.02);
-    --overlay-light: rgba(0, 0, 0, 0.04);
-    --overlay-border: rgba(0, 0, 0, 0.08);
-    --overlay-border-light: rgba(0, 0, 0, 0.05);
-    --overlay-fade: rgba(255, 255, 255, 0.95);
-    --overlay-fade-strong: rgba(255, 255, 255, 0.85);
+    --overlay-2: rgba(0, 0, 0, 0.02);
+    --overlay-3: rgba(0, 0, 0, 0.03);
+    --overlay-4: rgba(0, 0, 0, 0.04);
+    --overlay-5: rgba(0, 0, 0, 0.05);
+    --overlay-6: rgba(0, 0, 0, 0.06);
+    --overlay-8: rgba(0, 0, 0, 0.08);
+    --overlay-10: rgba(0, 0, 0, 0.10);
+    --overlay-15: rgba(0, 0, 0, 0.12);
+    --overlay-20: rgba(0, 0, 0, 0.15);
+    --overlay-30: rgba(0, 0, 0, 0.08);
+    --overlay-40: rgba(0, 0, 0, 0.25);
+    --overlay-50: rgba(0, 0, 0, 0.35);
+    --overlay-60: rgba(0, 0, 0, 0.4);
+
+    /* Light mode fades (white → transparent for image blending) */
+    --fade-95: rgba(255, 255, 255, 0.95);
+    --fade-85: rgba(255, 255, 255, 0.85);
+    --fade-70: rgba(255, 255, 255, 0.70);
+
+    /* Components */
     --dropdown-bg: #FFFFFF;
-    --dropdown-border: rgba(0, 0, 0, 0.1);
+    --dropdown-border: #E2E8F0;
     --dropdown-hover: rgba(108, 92, 255, 0.08);
-    --dropdown-shadow: 0 12px 28px rgba(0, 0, 0, 0.12);
+    --dropdown-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 10px 25px -5px rgba(0, 0, 0, 0.08);
+    --modal-bg: #FFFFFF;
+    --modal-backdrop: rgba(0, 0, 0, 0.5);
+    --badge-bg: rgba(0, 0, 0, 0.04);
+
+    /* Star rating empty color */
+    --star-empty: rgba(0, 0, 0, 0.12);
+    /* Spinner color */
+    --spinner-track: rgba(0, 0, 0, 0.15);
+    --spinner-fill: var(--text-primary);
   }
 
   [data-theme="dark"] {
@@ -45,17 +69,41 @@
     --shadow-glow: 0 6px 20px rgba(108, 92, 255, 0.35);
     --bg-hover: rgba(255, 255, 255, 0.04);
     --bg-active: rgba(108, 92, 255, 0.13);
-    /* Theme-aware overlays */
-    --overlay-subtle: rgba(255, 255, 255, 0.02);
-    --overlay-light: rgba(255, 255, 255, 0.04);
-    --overlay-border: rgba(255, 255, 255, 0.08);
-    --overlay-border-light: rgba(255, 255, 255, 0.05);
-    --overlay-fade: rgba(15, 15, 25, 0.95);
-    --overlay-fade-strong: rgba(15, 15, 25, 0.85);
+
+    /* Theme-aware overlays (white-based for dark backgrounds) */
+    --overlay-2: rgba(255, 255, 255, 0.02);
+    --overlay-3: rgba(255, 255, 255, 0.03);
+    --overlay-4: rgba(255, 255, 255, 0.04);
+    --overlay-5: rgba(255, 255, 255, 0.05);
+    --overlay-6: rgba(255, 255, 255, 0.06);
+    --overlay-8: rgba(255, 255, 255, 0.08);
+    --overlay-10: rgba(255, 255, 255, 0.10);
+    --overlay-15: rgba(255, 255, 255, 0.15);
+    --overlay-20: rgba(255, 255, 255, 0.20);
+    --overlay-30: rgba(255, 255, 255, 0.30);
+    --overlay-40: rgba(255, 255, 255, 0.40);
+    --overlay-50: rgba(255, 255, 255, 0.50);
+    --overlay-60: rgba(255, 255, 255, 0.60);
+
+    /* Dark mode fades (dark → transparent for image blending) */
+    --fade-95: rgba(15, 15, 25, 0.95);
+    --fade-85: rgba(15, 15, 25, 0.85);
+    --fade-70: rgba(15, 15, 25, 0.70);
+
+    /* Components */
     --dropdown-bg: #151C31;
     --dropdown-border: rgba(255, 255, 255, 0.08);
     --dropdown-hover: rgba(108, 92, 255, 0.12);
     --dropdown-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
+    --modal-bg: #151C31;
+    --modal-backdrop: rgba(0, 0, 0, 0.7);
+    --badge-bg: rgba(255, 255, 255, 0.05);
+
+    /* Star rating empty color */
+    --star-empty: rgba(255, 255, 255, 0.15);
+    /* Spinner color */
+    --spinner-track: rgba(255, 255, 255, 0.30);
+    --spinner-fill: #FFFFFF;
   }
 
   html {
@@ -85,6 +133,124 @@
   ::-webkit-scrollbar-thumb:hover {
     background-color: var(--text-muted);
   }
+
+  /* ══════════════════════════════════════════
+     LIGHT MODE UNIVERSAL OVERRIDES
+     Fix Tailwind white/x classes for light mode
+     ══════════════════════════════════════════ */
+  :root:not([data-theme="dark"]) .border-white\/5,
+  :root:not([data-theme="dark"]) .border-white\/\[0\.03\],
+  :root:not([data-theme="dark"]) .border-white\/\[0\.04\],
+  :root:not([data-theme="dark"]) .border-white\/\[0\.05\] {
+    border-color: var(--border-color) !important;
+  }
+
+  :root:not([data-theme="dark"]) .border-white\/10,
+  :root:not([data-theme="dark"]) .border-white\/\[0\.08\],
+  :root:not([data-theme="dark"]) .border-white\/\[0\.1\] {
+    border-color: var(--border-color) !important;
+  }
+
+  :root:not([data-theme="dark"]) .border-white\/15,
+  :root:not([data-theme="dark"]) .border-white\/20 {
+    border-color: #CBD5E1 !important;
+  }
+
+  :root:not([data-theme="dark"]) .bg-white\/3,
+  :root:not([data-theme="dark"]) .bg-white\/\[0\.02\],
+  :root:not([data-theme="dark"]) .bg-white\/\[0\.03\] {
+    background-color: var(--overlay-3) !important;
+  }
+
+  :root:not([data-theme="dark"]) .bg-white\/5,
+  :root:not([data-theme="dark"]) .bg-white\/\[0\.04\],
+  :root:not([data-theme="dark"]) .bg-white\/\[0\.05\] {
+    background-color: var(--overlay-5) !important;
+  }
+
+  :root:not([data-theme="dark"]) .bg-white\/10,
+  :root:not([data-theme="dark"]) .bg-white\/\[0\.06\],
+  :root:not([data-theme="dark"]) .bg-white\/\[0\.08\] {
+    background-color: var(--overlay-8) !important;
+  }
+
+  :root:not([data-theme="dark"]) .bg-white\/20 {
+    background-color: var(--overlay-10) !important;
+  }
+
+  :root:not([data-theme="dark"]) .hover\:bg-white\/3:hover,
+  :root:not([data-theme="dark"]) .hover\:bg-white\/5:hover {
+    background-color: var(--overlay-5) !important;
+  }
+
+  :root:not([data-theme="dark"]) .hover\:bg-white\/10:hover {
+    background-color: var(--overlay-8) !important;
+  }
+
+  :root:not([data-theme="dark"]) .text-white\/30,
+  :root:not([data-theme="dark"]) .text-white\/40 {
+    color: var(--text-muted) !important;
+  }
+
+  :root:not([data-theme="dark"]) .text-white\/50,
+  :root:not([data-theme="dark"]) .text-white\/60 {
+    color: var(--text-secondary) !important;
+  }
+
+  :root:not([data-theme="dark"]) .text-white\/90,
+  :root:not([data-theme="dark"]) .hover\:text-white:hover {
+    color: var(--text-primary) !important;
+  }
+
+  :root:not([data-theme="dark"]) .text-white:not(.btn-primary *):not([class*="bg-gradient"]):not([class*="from-"]) {
+    color: var(--text-primary) !important;
+  }
+
+  :root:not([data-theme="dark"]) .placeholder-white\/30::placeholder {
+    color: var(--text-muted) !important;
+  }
+
+  /* Fix zinc colors for light mode */
+  :root:not([data-theme="dark"]) .text-zinc-300,
+  :root:not([data-theme="dark"]) .text-zinc-400 {
+    color: var(--text-secondary) !important;
+  }
+
+  :root:not([data-theme="dark"]) .text-zinc-500,
+  :root:not([data-theme="dark"]) .text-zinc-600 {
+    color: var(--text-muted) !important;
+  }
+
+  :root:not([data-theme="dark"]) .bg-zinc-800,
+  :root:not([data-theme="dark"]) .bg-zinc-900\/95 {
+    background-color: var(--bg-surface) !important;
+    border-color: var(--border-color) !important;
+  }
+
+  /* Fix black overlays */
+  :root:not([data-theme="dark"]) .bg-black\/20 {
+    background-color: rgba(0, 0, 0, 0.04) !important;
+  }
+
+  :root:not([data-theme="dark"]) .bg-black\/30 {
+    background-color: rgba(0, 0, 0, 0.05) !important;
+  }
+
+  :root:not([data-theme="dark"]) .bg-black\/40 {
+    background-color: var(--bg-surface) !important;
+    border-color: var(--border-color) !important;
+  }
+
+  /* Scrollbar in light mode dropdown */
+  :root:not([data-theme="dark"]) .scrollbar-thumb-white\/10::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 0, 0, 0.12) !important;
+  }
+
+  /* Fix bg-[#151C31] in light mode */
+  :root:not([data-theme="dark"]) .bg-\[\#151C31\] {
+    background-color: var(--bg-surface) !important;
+    border-color: var(--border-color) !important;
+  }
 }
 
 @layer components {
@@ -101,7 +267,9 @@
   }
 
   .input-base {
-    @apply h-9 w-full rounded-lg bg-bg1/50 border border-border px-3 text-[13px] text-text1 outline-none transition-all placeholder:text-muted/50 text-start;
+    @apply h-9 w-full rounded-lg border px-3 text-[13px] text-text1 outline-none transition-all placeholder:text-muted/50 text-start;
+    background-color: var(--bg-input);
+    border-color: var(--border-color);
   }
 
   .input-base:focus {
@@ -113,16 +281,18 @@
     @apply block text-[11px] font-medium mb-1 text-start text-text2;
   }
 
-  /* Dark mode input override for "Input Fix" */
+  /* Dark mode input override */
   [data-theme="dark"] .input-base {
-    @apply border-white/[0.08] bg-white/[0.02];
+    background-color: rgba(255, 255, 255, 0.02);
+    border-color: rgba(255, 255, 255, 0.08);
   }
 
   [data-theme="dark"] .input-base:focus {
-    @apply border-primary/50 bg-white/[0.04];
+    @apply border-primary/50;
+    background-color: rgba(255, 255, 255, 0.04);
   }
 
-  /* Fix for select options background in dark mode */
+  /* Fix for select options background */
   select option {
     background-color: var(--bg-surface);
     color: var(--text-primary);
@@ -130,7 +300,6 @@
 
   [data-theme="dark"] select option {
     background-color: #12182B;
-    /* Deep dark blue-black for better contrast */
     color: #FFFFFF;
   }
 

@@ -209,8 +209,8 @@ const PricingPage = () => {
                         <div key={plan.id}
                             className={`relative rounded-2xl p-5 transition-all duration-300 hover:translate-y-[-4px] flex flex-col ${plan.popular ? 'ring-2' : ''}`}
                             style={{
-                                background: plan.popular ? `linear-gradient(145deg, ${plan.color}10, rgba(15,15,25,0.95))` : 'rgba(255,255,255,0.02)',
-                                border: `1px solid ${plan.popular ? `${plan.color}40` : 'rgba(255,255,255,0.06)'}`,
+                                background: plan.popular ? `linear-gradient(145deg, ${plan.color}10, var(--bg-surface))` : 'var(--overlay-2)',
+                                border: `1px solid ${plan.popular ? `${plan.color}40` : 'var(--border-color)'}`,
                                 boxShadow: plan.popular ? `0 8px 40px ${plan.color}15` : 'none',
                                 ringColor: plan.popular ? `${plan.color}40` : 'transparent',
                             }}

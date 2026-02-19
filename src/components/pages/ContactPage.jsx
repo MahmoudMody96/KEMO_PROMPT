@@ -30,7 +30,7 @@ const ContactPage = () => {
                     <Mail className="w-3.5 h-3.5 text-blue-400" />
                     <span className="text-xs font-bold text-blue-300">{isAr ? 'تواصل معنا' : 'CONTACT US'}</span>
                 </div>
-                <h1 className="text-3xl md:text-4xl font-extrabold text-white mb-3">
+                <h1 className="text-3xl md:text-4xl font-extrabold text-text1 mb-3">
                     {isAr ? 'نحن هنا لمساعدتك' : 'We\'re Here to Help'}
                 </h1>
                 <p className="text-sm text-zinc-400 max-w-lg mx-auto">
@@ -43,15 +43,15 @@ const ContactPage = () => {
                 {channels.map((ch, i) => (
                     <div key={i} className="text-center p-4 rounded-xl" style={{ background: `${ch.color}08`, border: `1px solid ${ch.color}15` }}>
                         <ch.icon className="w-6 h-6 mx-auto mb-2" style={{ color: ch.color }} />
-                        <p className="text-xs font-bold text-white mb-0.5">{isAr ? ch.titleAr : ch.titleEn}</p>
+                        <p className="text-xs font-bold text-text1 mb-0.5">{isAr ? ch.titleAr : ch.titleEn}</p>
                         <p className="text-[11px] text-zinc-400">{isAr ? ch.valueAr : ch.valueEn}</p>
                     </div>
                 ))}
             </div>
 
             {/* Contact Form */}
-            <div className="rounded-2xl p-6" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                <h2 className={`text-base font-bold text-white mb-4 ${isRTL ? 'text-right' : ''}`}>
+            <div className="rounded-2xl p-6" style={{ background: 'var(--overlay-2)', border: '1px solid var(--border-color)' }}>
+                <h2 className={`text-base font-bold text-text1 mb-4 ${isRTL ? 'text-right' : ''}`}>
                     {isAr ? 'أرسل لنا رسالة' : 'Send us a Message'}
                 </h2>
                 <form onSubmit={handleSubmit} className="space-y-4">
@@ -61,8 +61,8 @@ const ContactPage = () => {
                                 {isAr ? 'الاسم' : 'Name'}
                             </label>
                             <input type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
-                                className="w-full h-10 rounded-xl text-sm text-zinc-300 px-3"
-                                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
+                                className="w-full h-10 rounded-xl text-sm text-text1 px-3"
+                                style={{ background: 'var(--overlay-4)', border: '1px solid var(--border-color)' }}
                                 placeholder={isAr ? 'اكتب اسمك' : 'Your name'} />
                         </div>
                         <div>
@@ -70,8 +70,8 @@ const ContactPage = () => {
                                 {isAr ? 'البريد الإلكتروني' : 'Email'}
                             </label>
                             <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })}
-                                className="w-full h-10 rounded-xl text-sm text-zinc-300 px-3"
-                                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
+                                className="w-full h-10 rounded-xl text-sm text-text1 px-3"
+                                style={{ background: 'var(--overlay-4)', border: '1px solid var(--border-color)' }}
                                 placeholder={isAr ? 'بريدك الإلكتروني' : 'your@email.com'} />
                         </div>
                     </div>
@@ -81,7 +81,7 @@ const ContactPage = () => {
                         </label>
                         <input type="text" value={form.subject} onChange={(e) => setForm({ ...form, subject: e.target.value })}
                             className="w-full h-10 rounded-xl text-sm text-zinc-300 px-3"
-                            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
+                            style={{ background: 'var(--overlay-4)', border: '1px solid var(--border-color)' }}
                             placeholder={isAr ? 'موضوع الرسالة' : 'Subject'} />
                     </div>
                     <div>
@@ -90,7 +90,7 @@ const ContactPage = () => {
                         </label>
                         <textarea value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })}
                             className="w-full h-28 rounded-xl text-sm text-zinc-300 p-3 resize-none"
-                            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
+                            style={{ background: 'var(--overlay-4)', border: '1px solid var(--border-color)' }}
                             placeholder={isAr ? 'اكتب رسالتك...' : 'Write your message...'} />
                     </div>
                     <button type="submit"

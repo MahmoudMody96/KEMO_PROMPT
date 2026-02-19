@@ -61,7 +61,7 @@ const ServicesPage = () => {
                     <Palette className="w-3.5 h-3.5 text-emerald-400" />
                     <span className="text-xs font-bold text-emerald-300">{isAr ? 'خدماتنا' : 'OUR SERVICES'}</span>
                 </div>
-                <h1 className="text-3xl md:text-4xl font-extrabold text-white mb-3">
+                <h1 className="text-3xl md:text-4xl font-extrabold text-text1 mb-3">
                     {isAr ? 'كل ما تحتاجه لإنشاء محتوى احترافي' : 'Everything You Need for Pro Content'}
                 </h1>
                 <p className="text-sm text-zinc-400 max-w-lg mx-auto">
@@ -85,7 +85,7 @@ const ServicesPage = () => {
                                 <svc.icon className="w-6 h-6" style={{ color: svc.color }} />
                             </div>
                             <div className="flex-1">
-                                <h3 className="text-sm font-bold text-white mb-1.5">{isAr ? svc.titleAr : svc.titleEn}</h3>
+                                <h3 className="text-sm font-bold text-text1 mb-1.5">{isAr ? svc.titleAr : svc.titleEn}</h3>
                                 <p className="text-xs text-zinc-400 leading-relaxed mb-3">{isAr ? svc.descAr : svc.descEn}</p>
                                 {svc.tab && (
                                     <span className={`inline-flex items-center gap-1 text-[11px] font-semibold transition-colors ${isRTL ? 'flex-row-reverse' : ''}`}

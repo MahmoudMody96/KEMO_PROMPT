@@ -63,12 +63,12 @@ const ResultsPanel = () => {
                 <div className="absolute pointer-events-none" style={{
                     width: 420, maxWidth: '70%', height: '70%',
                     borderRadius: 14,
-                    background: 'linear-gradient(to bottom, rgba(255,255,255,0.04), rgba(255,255,255,0.02))',
+                    background: 'linear-gradient(to bottom, var(--overlay-4), var(--overlay-2))',
                     filter: 'blur(0.2px)',
                 }} />
                 <div className="absolute pointer-events-none" style={{
                     top: '22%', width: 280, height: 6, borderRadius: 4,
-                    background: 'rgba(255,255,255,0.05)',
+                    background: 'var(--overlay-5)',
                 }} />
                 <div className="absolute inset-0 bg-[radial-gradient(circle,rgba(108,92,255,0.06),transparent_70%)] pointer-events-none" />
                 <div className="relative mb-5 p-5 rounded-full bg-surface border border-primary/10 shadow-card" style={{ opacity: 0.7, transform: 'scale(0.9)' }}>

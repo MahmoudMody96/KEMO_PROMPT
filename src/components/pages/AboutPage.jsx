@@ -30,7 +30,7 @@ const AboutPage = () => {
                     <Globe className="w-3.5 h-3.5 text-indigo-400" />
                     <span className="text-xs font-bold text-indigo-300">{isAr ? 'عنّا' : 'ABOUT US'}</span>
                 </div>
-                <h1 className="text-3xl md:text-4xl font-extrabold text-white mb-3">
+                <h1 className="text-3xl md:text-4xl font-extrabold text-text1 mb-3">
                     {isAr ? 'نصنع مستقبل المحتوى بالذكاء الاصطناعي' : 'Building the Future of AI Content'}
                 </h1>
                 <p className="text-sm text-zinc-400 max-w-lg mx-auto">
@@ -43,7 +43,7 @@ const AboutPage = () => {
             {/* Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-10">
                 {stats.map((s, i) => (
-                    <div key={i} className="text-center p-4 rounded-xl" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                    <div key={i} className="text-center p-4 rounded-xl" style={{ background: 'var(--overlay-2)', border: '1px solid var(--border-color)' }}>
                         <p className="text-2xl font-extrabold bg-gradient-to-r from-indigo-400 to-violet-400 bg-clip-text text-transparent">{s.num}</p>
                         <p className="text-xs text-zinc-500 mt-1">{isAr ? s.labelAr : s.labelEn}</p>
                     </div>
@@ -51,7 +51,7 @@ const AboutPage = () => {
             </div>
 
             {/* Values */}
-            <h2 className={`text-lg font-bold text-white mb-4 ${isRTL ? 'text-right' : ''}`}>
+            <h2 className={`text-lg font-bold text-text1 mb-4 ${isRTL ? 'text-right' : ''}`}>
                 {isAr ? 'قيمنا' : 'Our Values'}
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-10">
@@ -63,7 +63,7 @@ const AboutPage = () => {
                             <v.icon className="w-5 h-5" style={{ color: v.color }} />
                         </div>
                         <div>
-                            <h3 className="text-sm font-bold text-white mb-1">{isAr ? v.titleAr : v.titleEn}</h3>
+                            <h3 className="text-sm font-bold text-text1 mb-1">{isAr ? v.titleAr : v.titleEn}</h3>
                             <p className="text-xs text-zinc-400 leading-relaxed">{isAr ? v.descAr : v.descEn}</p>
                         </div>
                     </div>
@@ -73,7 +73,7 @@ const AboutPage = () => {
             {/* Team CTA */}
             <div className="text-center p-8 rounded-2xl" style={{ background: 'linear-gradient(135deg, rgba(99,102,241,0.08), rgba(139,92,246,0.05))', border: '1px solid rgba(99,102,241,0.15)' }}>
                 <Award className="w-8 h-8 text-indigo-400 mx-auto mb-3" />
-                <h3 className="text-base font-bold text-white mb-2">
+                <h3 className="text-base font-bold text-text1 mb-2">
                     {isAr ? 'انضم إلى فريقنا' : 'Join Our Team'}
                 </h3>
                 <p className="text-xs text-zinc-400 mb-4 max-w-sm mx-auto">

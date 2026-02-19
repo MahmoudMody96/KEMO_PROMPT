@@ -26,8 +26,8 @@ const PromptCard = ({ prompt, category, isArabic, onPreview }) => {
         <div
             className="group relative rounded-2xl p-5 transition-all duration-300 hover:translate-y-[-3px] cursor-pointer overflow-hidden"
             style={{
-                background: 'rgba(255,255,255,0.02)',
-                border: '1px solid rgba(255,255,255,0.06)',
+                background: 'var(--overlay-2)',
+                border: '1px solid var(--border-color)',
             }}
             onClick={() => onPreview(prompt)}
             onMouseEnter={(e) => {
@@ -36,8 +36,8 @@ const PromptCard = ({ prompt, category, isArabic, onPreview }) => {
                 e.currentTarget.style.boxShadow = `0 8px 30px ${category.color}15`;
             }}
             onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'rgba(255,255,255,0.02)';
-                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)';
+                e.currentTarget.style.background = 'var(--overlay-2)';
+                e.currentTarget.style.borderColor = 'var(--border-color)';
                 e.currentTarget.style.boxShadow = 'none';
             }}
         >
@@ -55,7 +55,7 @@ const PromptCard = ({ prompt, category, isArabic, onPreview }) => {
                             {isArabic ? category.labelAr : category.labelEn}
                         </span>
                     </div>
-                    <h3 className="text-sm font-bold text-white mt-2">
+                    <h3 className="text-sm font-bold text-text1 mt-2">
                         {isArabic ? prompt.titleAr : prompt.titleEn}
                     </h3>
                     <p className="text-[11px] font-medium mt-0.5" style={{ color: category.color }}>
@@ -66,7 +66,7 @@ const PromptCard = ({ prompt, category, isArabic, onPreview }) => {
                 <div className="flex items-center gap-0.5 flex-shrink-0">
                     {Array.from({ length: 5 }).map((_, i) => (
                         <Star key={i} className="w-3 h-3" fill={i < prompt.impact ? '#f59e0b' : 'transparent'}
-                            style={{ color: i < prompt.impact ? '#f59e0b' : 'rgba(255,255,255,0.15)' }} />
+                            style={{ color: i < prompt.impact ? '#f59e0b' : 'var(--star-empty)' }} />
                     ))}
                 </div>
             </div>
@@ -77,7 +77,7 @@ const PromptCard = ({ prompt, category, isArabic, onPreview }) => {
             </p>
 
             {/* Preview snippet */}
-            <div className="rounded-lg p-2.5 mb-3" style={{ background: 'rgba(0,0,0,0.3)' }}>
+            <div className="rounded-lg p-2.5 mb-3" style={{ background: 'var(--overlay-4)' }}>
                 <p className="text-[10px] text-zinc-500 font-mono line-clamp-3 leading-relaxed" dir="ltr">
                     {prompt.prompt.substring(0, 150)}...
                 </p>
@@ -101,9 +101,9 @@ const PromptCard = ({ prompt, category, isArabic, onPreview }) => {
                     onClick={(e) => { e.stopPropagation(); onPreview(prompt); }}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all"
                     style={{
-                        background: 'rgba(255,255,255,0.05)',
-                        color: 'rgba(255,255,255,0.5)',
-                        border: '1px solid rgba(255,255,255,0.08)',
+                        background: 'var(--overlay-5)',
+                        color: 'var(--text-secondary)',
+                        border: '1px solid var(--border-color)',
                     }}
                 >
                     <Eye className="w-3 h-3" /> {isArabic ? 'عرض' : 'Preview'}
@@ -143,9 +143,9 @@ const PreviewModal = ({ prompt, category, isArabic, onClose }) => {
             <div
                 className="relative w-full max-w-3xl max-h-[85vh] rounded-2xl overflow-hidden flex flex-col"
                 style={{
-                    background: 'linear-gradient(135deg, #1a1a2e, #16213e)',
+                    background: 'var(--modal-bg)',
                     border: `1px solid ${category.color}30`,
-                    boxShadow: `0 25px 60px rgba(0,0,0,0.5), 0 0 40px ${category.color}10`,
+                    boxShadow: `var(--dropdown-shadow), 0 0 40px ${category.color}10`,
                 }}
                 onClick={(e) => e.stopPropagation()}
             >
@@ -155,7 +155,7 @@ const PreviewModal = ({ prompt, category, isArabic, onClose }) => {
                     <div className={`flex items-center gap-3 ${isArabic ? 'flex-row-reverse' : ''}`}>
                         <span className="text-2xl">{category.icon}</span>
                         <div className={isArabic ? 'text-right' : ''}>
-                            <h2 className="text-base font-bold text-white">
+                            <h2 className="text-base font-bold text-text1">
                                 {isArabic ? prompt.titleAr : prompt.titleEn}
                             </h2>
                             <p className="text-xs mt-0.5" style={{ color: category.color }}>
@@ -182,7 +182,7 @@ const PreviewModal = ({ prompt, category, isArabic, onClose }) => {
 
                 {/* Use Case */}
                 <div className={`px-5 py-3 flex items-center gap-2 ${isArabic ? 'flex-row-reverse' : ''}`}
-                    style={{ background: 'rgba(0,0,0,0.2)' }}>
+                    style={{ background: 'var(--overlay-4)' }}>
                     <Sparkles className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
                     <p className="text-xs text-zinc-400">
                         <span className="font-bold text-zinc-300">{isArabic ? 'متى تستخدمه: ' : 'Use case: '}</span>
@@ -191,7 +191,7 @@ const PreviewModal = ({ prompt, category, isArabic, onClose }) => {
                     <div className="flex items-center gap-0.5 flex-shrink-0 mr-auto">
                         {Array.from({ length: 5 }).map((_, i) => (
                             <Star key={i} className="w-3 h-3" fill={i < prompt.impact ? '#f59e0b' : 'transparent'}
-                                style={{ color: i < prompt.impact ? '#f59e0b' : 'rgba(255,255,255,0.15)' }} />
+                                style={{ color: i < prompt.impact ? '#f59e0b' : 'var(--star-empty)' }} />
                         ))}
                     </div>
                 </div>
@@ -297,8 +297,8 @@ const SecretVault = () => {
                         placeholder={isArabic ? 'ابحث في البرومبتات...' : 'Search prompts...'}
                         className="w-full h-10 rounded-xl text-sm text-zinc-300 placeholder-zinc-600"
                         style={{
-                            background: 'rgba(255,255,255,0.04)',
-                            border: '1px solid rgba(255,255,255,0.08)',
+                            background: 'var(--overlay-4)',
+                            border: '1px solid var(--border-color)',
                             paddingLeft: isArabic ? '12px' : '36px',
                             paddingRight: isArabic ? '36px' : '12px',
                         }}
@@ -319,9 +319,9 @@ const SecretVault = () => {
                     onClick={() => setActiveCategory('all')}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all"
                     style={{
-                        background: activeCategory === 'all' ? 'linear-gradient(135deg, rgba(139,92,246,0.2), rgba(59,130,246,0.15))' : 'rgba(255,255,255,0.04)',
-                        border: `1px solid ${activeCategory === 'all' ? 'rgba(139,92,246,0.3)' : 'rgba(255,255,255,0.08)'}`,
-                        color: activeCategory === 'all' ? '#c084fc' : 'rgba(255,255,255,0.4)',
+                        background: activeCategory === 'all' ? 'linear-gradient(135deg, rgba(139,92,246,0.2), rgba(59,130,246,0.15))' : 'var(--overlay-4)',
+                        border: `1px solid ${activeCategory === 'all' ? 'rgba(139,92,246,0.3)' : 'var(--border-color)'}`,
+                        color: activeCategory === 'all' ? '#c084fc' : 'var(--text-muted)',
                     }}
                 >
                     <Filter className="w-3 h-3" />
@@ -336,9 +336,9 @@ const SecretVault = () => {
                             onClick={() => setActiveCategory(cat.id)}
                             className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all"
                             style={{
-                                background: isActive ? `${cat.color}15` : 'rgba(255,255,255,0.04)',
-                                border: `1px solid ${isActive ? `${cat.color}30` : 'rgba(255,255,255,0.08)'}`,
-                                color: isActive ? cat.color : 'rgba(255,255,255,0.4)',
+                                background: isActive ? `${cat.color}15` : 'var(--overlay-4)',
+                                border: `1px solid ${isActive ? `${cat.color}30` : 'var(--border-color)'}`,
+                                color: isActive ? cat.color : 'var(--text-muted)',
                             }}
                         >
                             <span>{cat.icon}</span>

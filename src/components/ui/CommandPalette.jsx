@@ -102,12 +102,12 @@ const CommandPalette = () => {
                 className="relative w-full max-w-lg mx-4 rounded-2xl overflow-hidden shadow-2xl"
                 style={{
                     background: 'var(--bg-surface, #1e1e2e)',
-                    border: '1px solid rgba(255,255,255,0.08)',
+                    border: '1px solid var(--border-color)',
                     animation: 'pageEnter 0.2s ease-out',
                 }}
             >
                 {/* Search input */}
-                <div className="flex items-center gap-3 px-4 py-3 border-b" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
+                <div className="flex items-center gap-3 px-4 py-3 border-b" style={{ borderColor: 'var(--border-color)' }}>
                     <Search className="w-5 h-5 text-muted flex-shrink-0" />
                     <input
                         ref={inputRef}
@@ -119,7 +119,7 @@ const CommandPalette = () => {
                         dir={isAr ? 'rtl' : 'ltr'}
                     />
                     <kbd className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-mono rounded border text-muted"
-                        style={{ borderColor: 'rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.03)' }}>
+                        style={{ borderColor: 'var(--border-color)', background: 'var(--overlay-3)' }}>
                         ESC
                     </kbd>
                     <button onClick={() => setOpen(false)} className="text-muted hover:text-text1 transition-colors sm:hidden">
@@ -158,7 +158,7 @@ const CommandPalette = () => {
                                     </div>
                                     {isSelected && (
                                         <kbd className="text-[10px] font-mono px-1.5 py-0.5 rounded text-muted"
-                                            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                                            style={{ background: 'var(--overlay-5)', border: '1px solid var(--border-color)' }}>
                                             ↵
                                         </kbd>
                                     )}
@@ -170,17 +170,17 @@ const CommandPalette = () => {
 
                 {/* Footer hint */}
                 <div className="px-4 py-2 border-t flex items-center gap-4 text-[10px] text-muted"
-                    style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
+                    style={{ borderColor: 'var(--border-color)' }}>
                     <span className="flex items-center gap-1">
-                        <kbd style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', padding: '1px 4px', borderRadius: '3px' }}>↑↓</kbd>
+                        <kbd style={{ background: 'var(--overlay-5)', border: '1px solid var(--border-color)', padding: '1px 4px', borderRadius: '3px' }}>↑↓</kbd>
                         {isAr ? 'تنقل' : 'Navigate'}
                     </span>
                     <span className="flex items-center gap-1">
-                        <kbd style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', padding: '1px 4px', borderRadius: '3px' }}>↵</kbd>
+                        <kbd style={{ background: 'var(--overlay-5)', border: '1px solid var(--border-color)', padding: '1px 4px', borderRadius: '3px' }}>↵</kbd>
                         {isAr ? 'اختر' : 'Select'}
                     </span>
                     <span className="flex items-center gap-1">
-                        <kbd style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', padding: '1px 4px', borderRadius: '3px' }}>Esc</kbd>
+                        <kbd style={{ background: 'var(--overlay-5)', border: '1px solid var(--border-color)', padding: '1px 4px', borderRadius: '3px' }}>Esc</kbd>
                         {isAr ? 'إغلاق' : 'Close'}
                     </span>
                 </div>

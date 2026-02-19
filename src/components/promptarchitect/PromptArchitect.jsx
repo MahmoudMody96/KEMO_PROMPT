@@ -793,7 +793,7 @@ const PromptArchitect = () => {
                             style={{ animation: 'fadeIn 0.15s ease-out' }} />
                         <div className="fixed inset-0 z-[9999] flex items-center justify-center pointer-events-none">
                             <div className="pointer-events-auto w-[680px] max-w-[92vw] max-h-[80vh] rounded-2xl overflow-hidden flex flex-col"
-                                style={{ animation: 'fadeIn 0.2s ease-out', background: 'rgba(15,15,25,0.97)', backdropFilter: 'blur(20px)', border: '1px solid rgba(168,85,247,0.2)', boxShadow: '0 8px 40px rgba(0,0,0,0.5)' }}>
+                                style={{ animation: 'fadeIn 0.2s ease-out', background: 'var(--modal-bg)', backdropFilter: 'blur(20px)', border: '1px solid rgba(168,85,247,0.2)', boxShadow: 'var(--dropdown-shadow)' }}>
                                 {/* Header */}
                                 <div className="flex items-center justify-between px-5 py-4 border-b border-purple-500/10" style={{ background: 'rgba(168,85,247,0.04)' }}>
                                     <div className="flex items-center gap-3">
@@ -815,7 +815,7 @@ const PromptArchitect = () => {
                                 <div className="flex-1 overflow-y-auto p-4 space-y-3">
                                     {domainTemplates.map((tmpl) => (
                                         <div key={tmpl.id} className="p-4 rounded-xl border border-white/5 hover:border-purple-500/20 transition-all cursor-pointer group"
-                                            style={{ background: 'rgba(255,255,255,0.02)' }} onClick={() => handleUseTemplate(tmpl)}>
+                                            style={{ background: 'var(--overlay-2)' }} onClick={() => handleUseTemplate(tmpl)}>
                                             <div className="flex items-start justify-between">
                                                 <div>
                                                     <h4 className="text-sm font-semibold text-text1 group-hover:text-purple-400 transition-colors">

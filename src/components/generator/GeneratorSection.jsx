@@ -15,8 +15,8 @@ const GeneratorSection = () => {
             <div
                 className="rounded-2xl flex flex-col overflow-hidden relative z-10 w-full md:w-1/2 order-1 md:order-2"
                 style={{
-                    background: 'rgba(15,15,25,0.5)',
-                    border: '1px solid rgba(255,255,255,0.06)',
+                    background: 'var(--bg-surface)',
+                    border: '1px solid var(--border-color)',
                     backdropFilter: 'blur(12px)',
                 }}
             >
@@ -27,7 +27,7 @@ const GeneratorSection = () => {
                             <Wand2 className="w-5 h-5 text-violet-400" />
                         </div>
                         <div>
-                            <h2 className="text-sm md:text-base font-bold text-white">{isRTL ? 'استوديو الإبداع' : 'Creative Studio'}</h2>
+                            <h2 className="text-sm md:text-base font-bold text-text1">{isRTL ? 'استوديو الإبداع' : 'Creative Studio'}</h2>
                             <p className="text-[11px] text-zinc-500">{isRTL ? 'صمّم سيناريو فيديو احترافي بالذكاء الاصطناعي' : 'Design professional video blueprints with AI'}</p>
                         </div>
                     </div>
@@ -41,8 +41,8 @@ const GeneratorSection = () => {
             <div
                 className="rounded-2xl flex flex-col overflow-hidden relative w-full md:w-1/2 order-2 md:order-1"
                 style={{
-                    background: 'rgba(15,15,25,0.6)',
-                    border: '1px solid rgba(255,255,255,0.06)',
+                    background: 'var(--bg-surface)',
+                    border: '1px solid var(--border-color)',
                     backdropFilter: 'blur(12px)',
                 }}
             >
