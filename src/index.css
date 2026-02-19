@@ -18,6 +18,17 @@
     --primary-hover: #4DA3FF;
     --bg-hover: #F1F4FA;
     --bg-active: rgba(108, 92, 255, 0.08);
+    /* Theme-aware overlays */
+    --overlay-subtle: rgba(0, 0, 0, 0.02);
+    --overlay-light: rgba(0, 0, 0, 0.04);
+    --overlay-border: rgba(0, 0, 0, 0.08);
+    --overlay-border-light: rgba(0, 0, 0, 0.05);
+    --overlay-fade: rgba(255, 255, 255, 0.95);
+    --overlay-fade-strong: rgba(255, 255, 255, 0.85);
+    --dropdown-bg: #FFFFFF;
+    --dropdown-border: rgba(0, 0, 0, 0.1);
+    --dropdown-hover: rgba(108, 92, 255, 0.08);
+    --dropdown-shadow: 0 12px 28px rgba(0, 0, 0, 0.12);
   }
 
   [data-theme="dark"] {
@@ -34,6 +45,17 @@
     --shadow-glow: 0 6px 20px rgba(108, 92, 255, 0.35);
     --bg-hover: rgba(255, 255, 255, 0.04);
     --bg-active: rgba(108, 92, 255, 0.13);
+    /* Theme-aware overlays */
+    --overlay-subtle: rgba(255, 255, 255, 0.02);
+    --overlay-light: rgba(255, 255, 255, 0.04);
+    --overlay-border: rgba(255, 255, 255, 0.08);
+    --overlay-border-light: rgba(255, 255, 255, 0.05);
+    --overlay-fade: rgba(15, 15, 25, 0.95);
+    --overlay-fade-strong: rgba(15, 15, 25, 0.85);
+    --dropdown-bg: #151C31;
+    --dropdown-border: rgba(255, 255, 255, 0.08);
+    --dropdown-hover: rgba(108, 92, 255, 0.12);
+    --dropdown-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
   }
 
   html {

@@ -144,9 +144,9 @@ const ToolCard = ({ tool, isRTL, onNavigate }) => {
             className={`group relative w-full text-${isRTL ? 'right' : 'left'} rounded-2xl transition-all duration-300 overflow-hidden`}
             style={{
                 background: hovered
-                    ? `linear-gradient(135deg, ${tool.bgHover}, rgba(15,15,25,0.8))`
-                    : 'rgba(255,255,255,0.02)',
-                border: `1px solid ${hovered ? tool.borderHover : 'rgba(255,255,255,0.06)'}`,
+                    ? `linear-gradient(135deg, ${tool.bgHover}, var(--bg-surface))`
+                    : 'var(--overlay-subtle)',
+                border: `1px solid ${hovered ? tool.borderHover : 'var(--border-color)'}`,
                 transform: hovered ? 'translateY(-3px)' : 'translateY(0)',
                 boxShadow: hovered ? tool.glowShadow : 'none',
                 minHeight: '140px',
@@ -173,7 +173,7 @@ const ToolCard = ({ tool, isRTL, onNavigate }) => {
                                 }}>
                                 <tool.icon className="w-4 h-4" style={{ color: tool.iconColor }} />
                             </div>
-                            <h3 className="text-[13px] font-bold text-white">
+                            <h3 className="text-[13px] font-bold text-text1">
                                 {isRTL ? tool.titleAr : tool.titleEn}
                             </h3>
                         </div>
@@ -192,9 +192,9 @@ const ToolCard = ({ tool, isRTL, onNavigate }) => {
                     <div className="absolute inset-0 pointer-events-none z-10"
                         style={{
                             background: `
-                                linear-gradient(${isRTL ? 'to left' : 'to right'}, rgba(15,15,25,0.95) 0%, transparent 40%),
-                                linear-gradient(to top, rgba(15,15,25,0.7) 0%, transparent 30%),
-                                linear-gradient(to bottom, rgba(15,15,25,0.5) 0%, transparent 25%)
+                                linear-gradient(${isRTL ? 'to left' : 'to right'}, var(--overlay-fade) 0%, transparent 40%),
+                                linear-gradient(to top, var(--overlay-fade-strong) 0%, transparent 30%),
+                                linear-gradient(to bottom, var(--overlay-fade-strong) 0%, transparent 25%)
                             `,
                         }}
                     />
@@ -348,7 +348,7 @@ const GettingStarted = ({ isRTL, onNavigate }) => {
                     style={{ background: 'linear-gradient(135deg, rgba(34,197,94,0.15), rgba(16,185,129,0.1))' }}>
                     <Rocket className="w-4 h-4 text-emerald-400" />
                 </div>
-                <h2 className="text-sm font-bold text-white">{isRTL ? 'ابدأ في 3 خطوات' : 'Get Started in 3 Steps'}</h2>
+                <h2 className="text-sm font-bold text-text1">{isRTL ? 'ابدأ في 3 خطوات' : 'Get Started in 3 Steps'}</h2>
             </div>
 
             <div className={`grid grid-cols-1 md:grid-cols-3 gap-3`}>
@@ -357,7 +357,7 @@ const GettingStarted = ({ isRTL, onNavigate }) => {
                         className="relative group rounded-xl p-5 transition-all duration-300 hover:translate-y-[-2px] cursor-default"
                         style={{
                             background: step.bg,
-                            border: '1px solid rgba(255,255,255,0.05)',
+                            border: '1px solid var(--overlay-border-light)',
                         }}
                     >
                         {/* Step Number */}
@@ -370,7 +370,7 @@ const GettingStarted = ({ isRTL, onNavigate }) => {
                                 <step.icon className="w-4.5 h-4.5" style={{ color: step.color }} />
                             </div>
                         </div>
-                        <h4 className="text-sm font-bold text-white mb-1">
+                        <h4 className="text-sm font-bold text-text1 mb-1">
                             {isRTL ? step.titleAr : step.titleEn}
                         </h4>
                         <p className="text-xs text-zinc-500 leading-relaxed">
@@ -380,7 +380,7 @@ const GettingStarted = ({ isRTL, onNavigate }) => {
                         {/* Connector Line (not on last) */}
                         {i < 2 && (
                             <div className="hidden md:block absolute top-1/2 -right-3 w-6 h-px"
-                                style={{ background: 'rgba(255,255,255,0.08)' }} />
+                                style={{ background: 'var(--overlay-border)' }} />
                         )}
                     </div>
                 ))}
@@ -403,20 +403,20 @@ const StatsBar = ({ isRTL }) => {
     return (
         <div className="rounded-xl overflow-hidden"
             style={{
-                background: 'rgba(255,255,255,0.02)',
-                border: '1px solid rgba(255,255,255,0.05)',
+                background: 'var(--overlay-subtle)',
+                border: '1px solid var(--overlay-border-light)',
             }}>
             <div className={`grid grid-cols-2 md:grid-cols-4`}>
                 {stats.map((stat, i) => (
                     <div key={i}
                         className={`flex items-center gap-3 p-4 ${isRTL ? 'flex-row-reverse' : ''}`}
                         style={{
-                            borderRight: i < 3 ? '1px solid rgba(255,255,255,0.04)' : 'none',
+                            borderRight: i < 3 ? '1px solid var(--overlay-border-light)' : 'none',
                         }}
                     >
                         <stat.icon className="w-5 h-5 flex-shrink-0" style={{ color: stat.color }} />
                         <div className={isRTL ? 'text-right' : ''}>
-                            <p className="text-base font-extrabold text-white">{stat.value}</p>
+                            <p className="text-base font-extrabold text-text1">{stat.value}</p>
                             <p className="text-[10px] text-zinc-500 font-medium">{isRTL ? stat.labelAr : stat.labelEn}</p>
                         </div>
                     </div>

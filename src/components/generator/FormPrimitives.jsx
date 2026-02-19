@@ -85,27 +85,27 @@ const Select = ({ value = '', onChange, options = [], isRTL, placeholder }) => {
                 <ChevronDown className={`w-3.5 h-3.5 text-muted flex-shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
             </div>
             {isOpen && ReactDOM.createPortal(<><div className="fixed inset-0 z-[9990]" onClick={() => setIsOpen(false)} />
-                <div className="fixed z-[9991] rounded-xl shadow-[0_12px_28px_rgba(0,0,0,0.35)] max-h-[320px] overflow-hidden flex flex-col animate-scale-in" style={{ top: menuPos.top, left: menuPos.left, width: menuPos.width, background: '#151C31', border: '1px solid rgba(255,255,255,0.08)', backdropFilter: 'blur(6px)' }}>
+                <div className="fixed z-[9991] rounded-xl max-h-[320px] overflow-hidden flex flex-col animate-scale-in" style={{ top: menuPos.top, left: menuPos.left, width: menuPos.width, background: 'var(--dropdown-bg)', border: '1px solid var(--dropdown-border)', boxShadow: 'var(--dropdown-shadow)', backdropFilter: 'blur(6px)' }}>
                     {showSearch && (
-                        <div className="sticky top-0 z-10 px-2 pt-2 pb-1.5" style={{ background: '#151C31', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                            <input ref={searchRef} type="text" value={filter} onChange={(e) => setFilter(e.target.value)} placeholder={isRTL ? '🔍 بحث...' : '🔍 Search...'} className="w-full h-7 px-2.5 rounded-md text-xs text-white placeholder-white/30 outline-none" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)' }} dir="auto" />
+                        <div className="sticky top-0 z-10 px-2 pt-2 pb-1.5" style={{ background: 'var(--dropdown-bg)', borderBottom: '1px solid var(--overlay-border-light)' }}>
+                            <input ref={searchRef} type="text" value={filter} onChange={(e) => setFilter(e.target.value)} placeholder={isRTL ? '🔍 بحث...' : '🔍 Search...'} className="w-full h-7 px-2.5 rounded-md text-xs text-text1 placeholder-muted outline-none" style={{ background: 'var(--overlay-light)', border: '1px solid var(--overlay-border)' }} dir="auto" />
                         </div>
                     )}
                     <div className="overflow-y-auto p-1.5 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
-                        {filteredOptions.length === 0 && <div className="px-3 py-4 text-xs text-white/30 text-center">{isRTL ? 'لا توجد نتائج' : 'No results'}</div>}
+                        {filteredOptions.length === 0 && <div className="px-3 py-4 text-xs text-muted text-center">{isRTL ? 'لا توجد نتائج' : 'No results'}</div>}
                         {filteredOptions.map((opt, idx) => {
                             if (opt.group && opt.items) {
                                 const gc = groupGradients[idx % groupGradients.length]; return (
-                                    <div key={idx} className={`mb-2 rounded-lg border border-white/5 overflow-hidden bg-gradient-to-br ${gc}`}>
-                                        <div className="px-3 py-1.5 text-[10px] font-bold text-white/50 uppercase tracking-wider bg-black/20 border-b border-white/5">{opt.group}</div>
+                                    <div key={idx} className={`mb-2 rounded-lg border border-border overflow-hidden bg-gradient-to-br ${gc}`}>
+                                        <div className="px-3 py-1.5 text-[10px] font-bold text-muted uppercase tracking-wider bg-black/10 dark:bg-black/20 border-b border-border">{opt.group}</div>
                                         <div className="p-1">{opt.items.map((item, i) => (
-                                            <div key={i} onClick={() => handleSelect(item.value)} className={`px-3 py-2 text-sm rounded-md cursor-pointer transition-all duration-150 flex items-center justify-between ${value === item.value ? 'bg-primary/20 text-primary font-semibold' : 'text-text2 hover:bg-[rgba(108,92,255,0.12)] hover:text-white'}`}>
+                                            <div key={i} onClick={() => handleSelect(item.value)} className={`px-3 py-2 text-sm rounded-md cursor-pointer transition-all duration-150 flex items-center justify-between ${value === item.value ? 'bg-primary/20 text-primary font-semibold' : 'text-text2 hover:bg-[rgba(108,92,255,0.12)] hover:text-text1'}`}>
                                                 <span>{item.label || item.value}</span>{value === item.value && <Check className="w-3.5 h-3.5" />}
                                             </div>
                                         ))}</div>
                                     </div>);
                             }
-                            return (<div key={idx} onClick={() => handleSelect(opt.value)} className={`px-3 py-2.5 text-sm rounded-lg cursor-pointer transition-all duration-150 flex items-center justify-between mb-1 ${value === opt.value ? 'bg-primary/20 text-primary font-semibold' : 'text-text2 hover:bg-[rgba(108,92,255,0.12)] hover:text-white'}`}>
+                            return (<div key={idx} onClick={() => handleSelect(opt.value)} className={`px-3 py-2.5 text-sm rounded-lg cursor-pointer transition-all duration-150 flex items-center justify-between mb-1 ${value === opt.value ? 'bg-primary/20 text-primary font-semibold' : 'text-text2 hover:bg-[rgba(108,92,255,0.12)] hover:text-text1'}`}>
                                 <span>{opt.label || opt.value}</span>{value === opt.value && <Check className="w-3.5 h-3.5" />}
                             </div>);
                         })}

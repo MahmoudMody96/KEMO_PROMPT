@@ -263,7 +263,7 @@ const Sidebar = ({ onNavClick }) => {
               hover:bg-hover-state group
               ${isRTL ? 'flex-row-reverse' : ''}
             `}
-            style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)' }}
+            style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--overlay-border-light)' }}
           >
             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0 shadow-sm">
               {initial}
