@@ -27,3 +27,13 @@ dist-ssr
 .env
 .env.local
 server/.env
+
+# Build artifacts
+build_output.txt
+
+# Local scripts (may contain personal paths)
+*.bat
+
+# Security — prevent accidental key/cert commits
+*.pem
+*.key

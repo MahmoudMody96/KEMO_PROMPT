@@ -25,7 +25,10 @@ export default async function handler(req, res) {
             return res.status(500).json({ error: 'API key not configured' });
         }
 
-        const storeId = process.env.VITE_LEMONSQUEEZY_STORE_ID || '836671';
+        const storeId = process.env.VITE_LEMONSQUEEZY_STORE_ID;
+        if (!storeId) {
+            return res.status(500).json({ error: 'Store ID not configured' });
+        }
 
         // Create checkout via LemonSqueezy API
         const response = await fetch('https://api.lemonsqueezy.com/v1/checkouts', {

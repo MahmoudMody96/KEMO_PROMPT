@@ -7,7 +7,7 @@ import { useAuth } from '../../context/AuthContext';
 import { Shield, Mail, Lock, ArrowRight, Loader2, ShieldCheck, AlertTriangle, Globe } from 'lucide-react';
 import './AdminLoginPage.css';
 
-const ADMIN_EMAILS = ['mahmoud.abdelmonem1710@gmail.com'];
+const ADMIN_EMAILS = (import.meta.env.VITE_ADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
 
 const t = {
     en: {

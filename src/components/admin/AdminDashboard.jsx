@@ -15,7 +15,7 @@ import {
     Database, Server, Wifi
 } from 'lucide-react';
 
-const ADMIN_EMAILS = ['mahmoud.abdelmonem1710@gmail.com'];
+const ADMIN_EMAILS = (import.meta.env.VITE_ADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
 export const isAdmin = (user) => user?.email && ADMIN_EMAILS.includes(user.email.toLowerCase());
 
 // ═══════════════════════════════════════
