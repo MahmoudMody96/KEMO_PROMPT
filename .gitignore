@@ -45,3 +45,6 @@ src/api/_extract.ps1
 .claude-flow/
 .claude/proven-config.json
 .claude/.proven-config-version
+
+# Stray files from shell redirects
+/[0-9]*
