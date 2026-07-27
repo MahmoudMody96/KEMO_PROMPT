@@ -10,13 +10,15 @@ FROM node:22-alpine AS frontend
 
 WORKDIR /build
 
-# Vite inlines VITE_* at build time, so anything the browser needs must be
-# present now — not at container start.
-ARG VITE_API_URL=""
-ENV VITE_API_URL=$VITE_API_URL
+# vite, tailwind and the eslint toolchain are devDependencies. Under
+# NODE_ENV=production npm skips those, `vite` never lands in node_modules, and
+# the build dies with "sh: vite: not found". Coolify injects NODE_ENV as a
+# build arg, so pin development here and ask for dev dependencies explicitly —
+# the build stage is thrown away, and none of it reaches the final image.
+ENV NODE_ENV=development
 
 COPY package.json package-lock.json* ./
-RUN npm ci
+RUN npm ci --include=dev
 
 COPY . .
 RUN npm run build
