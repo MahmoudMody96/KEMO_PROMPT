@@ -100,6 +100,12 @@ router.post('/register', registerLimiter, async (req, res) => {
         return res.status(201).json({ user: publicUser(user) });
 
     } catch (err) {
+        // Two simultaneous signups with the same address both pass the SELECT
+        // and race to the INSERT; the unique index decides, and the loser gets
+        // the same answer as if it had lost the SELECT.
+        if (err.code === '23505') {
+            return res.status(409).json({ error: 'An account with this email already exists' });
+        }
         console.error('[AUTH] register failed:', err.message);
         return res.status(500).json({ error: 'Could not create your account' });
     }

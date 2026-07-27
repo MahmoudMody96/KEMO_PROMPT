@@ -34,11 +34,32 @@ app.set('trust proxy', 1);
 app.disable('x-powered-by');
 
 // --- security headers ---------------------------------------------------
+//
+// The allowances below are each earned by something the app actually loads:
+//   'unsafe-inline' style — Tailwind and React write inline style attributes
+//   fonts.googleapis / gstatic — the webfonts in index.html
+//   app.lemonsqueezy.com — the checkout overlay script and its iframe
+// data: images cover the base64 uploads the extractor previews locally.
+const CSP = [
+    "default-src 'self'",
+    "script-src 'self' https://app.lemonsqueezy.com",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "font-src 'self' https://fonts.gstatic.com data:",
+    "img-src 'self' data: blob: https:",
+    "connect-src 'self'",
+    "frame-src https://app.lemonsqueezy.com",
+    "frame-ancestors 'self'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "object-src 'none'",
+].join('; ');
+
 app.use((req, res, next) => {
     res.set('X-Content-Type-Options', 'nosniff');
     res.set('X-Frame-Options', 'SAMEORIGIN');
     res.set('Referrer-Policy', 'strict-origin-when-cross-origin');
     res.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=()');
+    res.set('Content-Security-Policy', CSP);
     if (config.isProduction) {
         res.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
     }
@@ -57,9 +78,17 @@ app.get('/api/health', (req, res) => res.json({
 // LemonSqueezy sent; re-serialising a parsed object produces different bytes.
 // body-parser marks the request as handled, so express.json() below skips it.
 app.use('/api/lemonsqueezy-webhook', express.raw({ type: '*/*', limit: '1mb' }));
-app.use(express.json({ limit: '25mb' }));   // vision payloads carry base64 images
+
+// Only the vision endpoint carries base64 images. Granting every route a 25 MB
+// budget would let an anonymous caller tie up memory on the login form.
+app.use('/api/vision', express.json({ limit: '25mb' }));
+app.use(express.json({ limit: '256kb' }));
+
 app.use(cookieParser());
-app.use(attachUser);
+
+// Session lookup costs a JWT verify plus a database round trip, so it runs for
+// the API only — not for every static asset the browser requests.
+app.use('/api', attachUser);
 
 // --- API ----------------------------------------------------------------
 app.use('/api/auth', authRoutes);

@@ -8,7 +8,7 @@
 <p align="center">
   <a href="#-whats-new-in-v100"><img src="https://img.shields.io/badge/Version-10.0-blue?style=for-the-badge" alt="Version 10.0"/></a>
   <a href="#-license"><img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="MIT License"/></a>
-  <a href="https://github.com/Mahmoud-Raie/kemo-prompt-engine"><img src="https://img.shields.io/badge/GitHub-Repo-black?style=for-the-badge&logo=github" alt="GitHub"/></a>
+  <a href="https://github.com/MahmoudMody96/KEMO_PROMPT"><img src="https://img.shields.io/badge/GitHub-Repo-black?style=for-the-badge&logo=github" alt="GitHub"/></a>
 </p>
 
 <p align="center">
@@ -92,103 +92,106 @@
 
 ## 🛠️ التثبيت والتشغيل (Installation)
 
-### المتطلبات:
-- Node.js v18+
-- npm أو yarn
+### المتطلبات
+- Node.js 20+
+- PostgreSQL 14+ (أو Docker)
+- مفتاح [OpenRouter](https://openrouter.ai/keys)
 
-### الخطوات:
+### التطوير المحلي
 
 #### 1. تحميل المشروع
 ```bash
-git clone https://github.com/Mahmoud-Raie/kemo-prompt-engine.git
-cd kemo-prompt-engine
+git clone https://github.com/MahmoudMody96/KEMO_PROMPT.git
+cd KEMO_PROMPT
 ```
 
 #### 2. تثبيت المكتبات
 ```bash
-npm install
+npm install && (cd server && npm install)
 ```
 
-#### 3. إعداد مفاتيح API
-أنشئ ملف `.env` في المجلد الرئيسي:
-```env
-VITE_OPENROUTER_API_KEY=sk-or-v1-xxxxxxxxxxxxxxxxxxxx
-```
+#### 3. الإعدادات
+انسخ `.env.example` إلى `.env` واملأ `DATABASE_URL` و`JWT_SECRET` و`OPENROUTER_API_KEY`.
 
-#### 4. تشغيل الموقع
+> ⚠️ مفتاح OpenRouter **لا يصل للمتصفح إطلاقاً**. السيرفر هو الوحيد اللي بيستخدمه،
+> وبيتحقق من هوية المستخدم ويخصم رصيده قبل أي استدعاء.
+
+#### 4. التشغيل
 ```bash
-npm run dev
+npm run build && (cd server && npm start)
 ```
-الموقع سيعمل على: `http://localhost:5173`
+السيرفر بيقدّم الواجهة والـ API على `http://localhost:3000` — ومشغّل الـ
+migrations بيجهّز قاعدة البيانات لوحده عند الإقلاع.
 
-#### 5. بناء نسخة الإنتاج (Production)
-```bash
-npm run build
-npm run preview
+للتطوير على الواجهة بإعادة تحميل فورية، شغّل `npm run dev` في نافذة تانية
+(بيشتغل على `:5173` ويحتاج proxy للـ API).
+
+#### 5. أول أدمن
+بعد ما تسجّل حساب، من قاعدة البيانات:
+```sql
+UPDATE users SET is_admin = TRUE WHERE LOWER(email) = LOWER('you@example.com');
 ```
+
+### النشر
+راجع [DEPLOY.md](./DEPLOY.md) — نشر بـ Docker على Coolify.
 
 ---
 
 ## 📂 هيكلية المشروع (Project Structure)
 
+الواجهة والـ API بيتبنوا في صورة Docker واحدة وبيتقدّموا من نفس الـ origin،
+عشان كده كوكي الجلسة مش محتاج CORS ولا استثناءات cross-site.
+
 ```
-kemo-prompt-engine/
-├── src/
-│   ├── api/
-│   │   ├── promptApi.js              # 🧠 المحرك الرئيسي v10.0
-│   │   │   ├── getGenreDNA()         # استخراج DNA النوع
-│   │   │   ├── getMoralTemplates()   # 63 قالب أخلاقي
-│   │   │   ├── generate_prompt()     # توليد السيناريو
-│   │   │   ├── brainstorm_concept()  # توليد الأفكار v10.0
-│   │   │   └── [8 personas + 6 chaos lenses]
-│   │   │
-│   │   ├── generateIdeaPrompt_v10_NEW.js  # محرك الأفكار v10.0
-│   │   ├── openrouter.js             # اتصال OpenRouter API
-│   │   ├── config.js                 # إعدادات النماذج
-│   │   └── utils/
-│   │       └── frameExtractor.js     # استخراج إطارات الفيديو
-│   │
-│   ├── components/
-│   │   ├── generator/                # 🎬 مولد السيناريوهات
-│   │   │   ├── GeneratorSection.jsx
-│   │   │   ├── IdeaSuggestion.jsx
-│   │   │   ├── StoryBlueprint.jsx
-│   │   │   └── CreativeBlueprint.jsx
-│   │   │
-│   │   ├── extractor/                # 🔍 محلل الصور/الفيديو
-│   │   │   ├── ExtractorSection.jsx
-│   │   │   └── ImageAnalysis.jsx
-│   │   │
-│   │   ├── promptarchitect/          # 🏗️ مهندس البرومبتات
-│   │   │   └── PromptArchitectSection.jsx
-│   │   │
-│   │   ├── trendhunter/              # 📊 باحث الترندات
-│   │   │   └── TrendHunterSection.jsx
-│   │   │
-│   │   ├── layout/                   # الهيكل العام
-│   │   │   ├── Navbar.jsx
-│   │   │   └── Footer.jsx
-│   │   │
-│   │   └── ui/                       # 12 مكون UI
-│   │       ├── Button.jsx
-│   │       ├── Input.jsx
-│   │       ├── Select.jsx
-│   │       ├── Card.jsx
-│   │       └── [8 more components]
-│   │
-│   ├── context/
-│   │   └── ThemeContext.jsx          # إدارة الثيمات
-│   │
-│   ├── App.jsx                       # المكون الرئيسي
-│   └── main.jsx                      # نقطة الدخول
+KEMO_PROMPT/
+├── Dockerfile                     # بناء بمرحلتين: الواجهة ثم السيرفر
 │
-├── public/                           # الملفات العامة
-├── .env.example                      # نموذج الإعدادات
-├── package.json
-├── vite.config.js
-├── tailwind.config.js
-└── README.md
+├── src/                           # الواجهة (React + Vite)
+│   ├── api/
+│   │   ├── openrouter.js          # نداءات /api/generate و /api/vision
+│   │   ├── promptApi.js           # واجهة موحّدة للمحركات
+│   │   └── engines/               # 13 محرك: DNA, screenplay, nexus, trends
+│   ├── lib/
+│   │   ├── apiClient.js           # الباب الوحيد للباك إند
+│   │   └── events.js              # إشارة تحديث الرصيد
+│   ├── context/                   # AuthContext + AppContext
+│   ├── components/                # generator, extractor, admin, ui...
+│   └── services/creditsService.js # عرض الرصيد + حفظ المشاريع
+│
+└── server/                        # الـ API (Express + PostgreSQL)
+    ├── migrations/001_init.sql    # الـ schema — بيتطبّق تلقائياً عند الإقلاع
+    └── src/
+        ├── index.js               # التطبيق: يقدّم dist/ + الـ API
+        ├── config.js              # إعدادات بتتحقق عند الإقلاع (fail-fast)
+        ├── db.js                  # pool + transaction helper
+        ├── auth/
+        │   ├── sessions.js        # bcrypt، JWT، جلسات قابلة للإلغاء
+        │   └── middleware.js      # requireAuth / requireAdmin
+        ├── lib/                   # credits, rateLimit, openrouter
+        └── routes/
+            ├── auth.js            # تسجيل، دخول، خروج، تغيير باسورد
+            ├── ai.js              # generate + vision (خصم واسترجاع رصيد)
+            ├── billing.js         # checkout + webhook
+            ├── projects.js        # حفظ السيناريوهات
+            ├── account.js         # الرصيد والاستخدام
+            └── admin.js           # لوحة التحكم
 ```
+
+### تدفّق طلب توليد واحد
+
+```
+المتصفح ──POST /api/generate (كوكي الجلسة)──> requireAuth
+                                                  │
+                                          chargeCredits()  ← السعر من السيرفر
+                                                  │
+                                            OpenRouter API
+                                                  │
+                                       نجح؟ ──> logUsage + الرد
+                                       فشل؟ ──> refundCredits + خطأ
+```
+
+المستخدم مابيتحاسبش على استدعاء فشل، والعميل بيبعت **اسم الإجراء** بس —
+مش سعره.
 
 ---
 
@@ -394,19 +397,35 @@ Genre DNA Used:
 
 ## 🔧 التقنيات المستخدمة (Tech Stack)
 
-| Technology | Version | Usage |
-|------------|---------|-------|
-| **React** | 19.2.0 | Frontend Framework |
-| **Vite** | 7.2.4 | Build Tool & Dev Server |
-| **TailwindCSS** | 4.1.18 | Styling |
-| **Lucide React** | 0.563.0 | Icons |
-| **OpenRouter API** | Latest | AI Model Access |
-| **Google Gemini** | Latest | Primary AI Model |
+### الواجهة
+| Technology | Usage |
+|------------|-------|
+| **React 19** | إطار الواجهة |
+| **Vite 7** | البناء وخادم التطوير |
+| **TailwindCSS 4** | التنسيق |
+| **Lucide React** | الأيقونات |
 
-### AI Models Used:
-- **Text Generation:** Google Gemini 2.0 Flash Thinking
-- **Vision:** Google Gemini 2.0 Flash Vision
-- **Fallback:** OpenAI GPT-4
+### الباك إند
+| Technology | Usage |
+|------------|-------|
+| **Node.js 20+ / Express 5** | الـ API وتقديم الملفات |
+| **PostgreSQL 14+** | قاعدة البيانات |
+| **bcryptjs** | تشفير الباسوردات (cost 12) |
+| **jsonwebtoken** | توقيع الجلسات |
+| **Docker** | بناء ونشر بمرحلتين |
+
+### الذكاء الاصطناعي
+- **النصوص:** Google Gemini 2.0 Flash — عبر OpenRouter
+- **الرؤية:** Google Gemini 2.0 Flash Vision
+- المفتاح موجود على السيرفر فقط ولا يصل للمتصفح
+
+### الأمان
+- مصادقة ذاتية الاستضافة — كوكي `httpOnly` + `SameSite=Lax`
+- جلسات قابلة للإلغاء: الـ id مخزّن مُجزّأً (hashed) في قاعدة البيانات
+- تفويض على مستوى التطبيق — كل استعلام مُقيّد بـ `req.user.id`
+- خصم الرصيد على السيرفر مع استرجاع تلقائي عند الفشل
+- تحقق HMAC للـ webhook على البايتات الخام + حماية من التكرار
+- ترويسات: CSP، HSTS، `nosniff`، `frame-ancestors`
 
 ---
 
@@ -508,10 +527,10 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND...
 
 ## 📞 التواصل (Contact)
 
-- **GitHub:** [@Mahmoud-Raie](https://github.com/Mahmoud-Raie)
-- **Project:** [kemo-prompt-engine](https://github.com/Mahmoud-Raie/kemo-prompt-engine)
-- **Issues:** [Report Bug](https://github.com/Mahmoud-Raie/kemo-prompt-engine/issues)
-- **Discussions:** [Feature Requests](https://github.com/Mahmoud-Raie/kemo-prompt-engine/discussions)
+- **GitHub:** [@MahmoudMody96](https://github.com/MahmoudMody96)
+- **Project:** [KEMO_PROMPT](https://github.com/MahmoudMody96/KEMO_PROMPT)
+- **Issues:** [Report Bug](https://github.com/MahmoudMody96/KEMO_PROMPT/issues)
+- **Discussions:** [Feature Requests](https://github.com/MahmoudMody96/KEMO_PROMPT/discussions)
 
 ---
 

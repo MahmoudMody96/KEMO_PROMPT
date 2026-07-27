@@ -1,163 +1,221 @@
-# 🚀 PromptForge — دليل الإطلاق (Deployment Guide)
+# 🚀 Kemo Engine — دليل النشر على Coolify
+
+المشروع بيتنشر كـ **صورة Docker واحدة** فيها الواجهة المبنية والـ API مع بعض،
+جنبها **PostgreSQL**. مفيش Supabase ولا Vercel ولا أي خدمة خارجية للمصادقة.
+
+---
 
 ## المتطلبات
-- حساب [GitHub](https://github.com)
-- حساب [Vercel](https://vercel.com) (مجاني)
-- حساب [Supabase](https://supabase.com) (مجاني)
+
+- سيرفر عليه [Coolify](https://coolify.io) v4.1+
 - مفتاح [OpenRouter](https://openrouter.ai/keys)
-- حساب [LemonSqueezy](https://lemonsqueezy.com) (للدفع)
-
-> **مهم:** Supabase مش اختياري. الـ API بيتحقق من هوية المستخدم وبيخصم الرصيد
-> قبل أي طلب لـ OpenRouter. من غير `SUPABASE_SERVICE_ROLE_KEY` الـ endpoints
-> بترفض الخدمة بدل ما تفتح مفتاحك للعالم.
+- (اختياري) حساب [LemonSqueezy](https://lemonsqueezy.com) للدفع
 
 ---
 
-## الخطوة 1: إعداد Supabase
+## الخطوة 1: قاعدة البيانات
 
-1. ادخل على [supabase.com](https://supabase.com) → **New Project**
-2. اختر اسم للمشروع (مثلاً `promptforge`) والباسورد
-3. استنى لحد ما المشروع يتجهز (دقيقة تقريباً)
-4. روح **SQL Editor** → **New Query**
-   - **مشروع جديد:** انسخ محتوى `server/schema.sql` والصقه → **Run**
-   - **قاعدة بيانات موجودة من قبل:** شغّل
-     `server/migrations/001_security_hardening.sql` بدلاً منه
-5. اعمل نفسك أدمن (من الـ SQL Editor، مش من المتصفح):
-   ```sql
-   UPDATE public.profiles SET is_admin = TRUE WHERE email = 'you@example.com';
-   ```
-6. روح **Settings** → **API** وانسخ:
-   - **Project URL** → `https://xxxxx.supabase.co`
-   - **anon public key** → `eyJ...`
-   - **service_role key** → `eyJ...` 🔴 **سري جداً — للسيرفر بس**
+من Coolify: **Project → + New → Database → PostgreSQL**
 
-### (اختياري) تفعيل Google Login
-1. روح **Authentication** → **Providers** → **Google**
-2. Enable → حط الـ Client ID والـ Secret من
-   [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
+| الإعداد | القيمة |
+|---|---|
+| Name | `kemo-db` |
+| Postgres User | `kemo` |
+| Postgres DB | `kemo` |
+| Postgres Password | ولّد واحد عشوائي |
 
----
+> **مهم:** خلّي الباسورد **URL-safe** (حروف وأرقام و`-` و`_` بس). الرموز زي
+> `@` و`:` و`/` بتكسر صيغة `DATABASE_URL`. ولّد واحد بـ:
+> ```bash
+> node -e "console.log(require('crypto').randomBytes(30).toString('base64url'))"
+> ```
 
-## الخطوة 2: رفع الكود على GitHub
-
-```bash
-git add .
+بعد ما تشتغل، انسخ الـ **Internal URL** — شكله:
+```
+postgres://kemo:PASSWORD@<db-uuid>:5432/kemo
 ```
 
+استخدم الداخلي مش الخارجي: قاعدة البيانات مالهاش أي سبب تتعرّض للإنترنت.
+
+---
+
+## الخطوة 2: التطبيق
+
+**Project → + New → Application → Public Repository**
+
+| الإعداد | القيمة |
+|---|---|
+| Repository | `https://github.com/MahmoudMody96/KEMO_PROMPT` |
+| Branch | `main` |
+| Build Pack | **Dockerfile** |
+| Dockerfile Location | `/Dockerfile` |
+| Port Exposes | `3000` |
+
+---
+
+## الخطوة 3: متغيرات البيئة
+
+### مطلوبة — السيرفر بيرفض يقلع من غيرها
+
+| المتغير | الشرح |
+|---|---|
+| `DATABASE_URL` | الرابط الداخلي من الخطوة 1 |
+| `JWT_SECRET` | **32 حرف على الأقل** — الكود بيتحقق ويقف لو أقصر |
+| `OPENROUTER_API_KEY` | من openrouter.ai/keys |
+| `APP_URL` | رابط التطبيق، مثال `https://kemo.example.com` |
+| `NODE_ENV` | `production` |
+| `PORT` | `3000` |
+
+ولّد الـ JWT secret بـ:
 ```bash
-git commit -m "chore: security hardening"
+node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
 ```
 
-```bash
-git push -u origin main
+### اختيارية
+
+| المتغير | الافتراضي | الشرح |
+|---|---|---|
+| `SESSION_DAYS` | `7` | عمر الجلسة |
+| `RATE_LIMIT_MAX` | `30` | طلبات AI لكل نافذة |
+| `RATE_LIMIT_WINDOW` | `60000` | حجم النافذة (ms) |
+| `SIGNUP_BONUS_CREDITS` | `20` | رصيد الترحيب |
+
+### الدفع (اختياري — الشراء بيتعطّل من غيرها)
+
+`LEMONSQUEEZY_API_KEY` · `LEMONSQUEEZY_WEBHOOK_SECRET` · `LEMONSQUEEZY_STORE_ID`
+`LEMON_VARIANT_BASIC` · `LEMON_VARIANT_PRO` · `LEMON_VARIANT_PREMIUM`
+
+وللواجهة (عامة، بتتحقن وقت البناء):
+`VITE_LEMON_VARIANT_BASIC` · `VITE_LEMON_VARIANT_PRO` · `VITE_LEMON_VARIANT_PREMIUM`
+
+---
+
+## الخطوة 4: الدومين و HTTPS
+
+في إعدادات التطبيق حط الدومين **بـ `https://`**:
+```
+https://kemo.example.com
+```
+`https://` هي اللي بتخلّي Coolify يطلب شهادة Let's Encrypt أوتوماتيك.
+
+**مالكش دومين؟** استخدم [sslip.io](https://sslip.io) — بيرجّع أي IP تحطه في
+الاسم، فهو نطاق حقيقي وLet's Encrypt بيديه شهادة عادي:
+```
+https://kemo.<server-ip>.sslip.io
 ```
 
-> ⚠️ اتأكد إن `.env` و `server/.env` **مش** مرفوعين (محميين بـ `.gitignore`)
+> لازم يكون البورت **80 مفتوح** — تجديد الشهادة كل 60 يوم بيمر منه. ناس كتير
+> بتقفله بعد ما HTTPS يشتغل وبعد شهرين الشهادة تقع فجأة.
 
 ---
 
-## الخطوة 3: Deploy على Vercel
+## الخطوة 5: النشر
 
-1. ادخل [vercel.com](https://vercel.com) → **Add New** → **Project**
-2. اختر الـ GitHub repo
-3. Vercel هيكتشف إنه Vite project تلقائياً
-4. **قبل ما تضغط Deploy** → روح **Environment Variables** وأضف:
+اضغط **Deploy**. أول بناء بياخد 2-4 دقايق (بناء Vite + تثبيت مكتبات السيرفر).
 
-### مطلوب
-
-| Variable | Value | Note |
-|----------|-------|------|
-| `OPENROUTER_API_KEY` | `sk-or-v1-...` | 🔴 سري — سيرفر بس |
-| `SUPABASE_SERVICE_ROLE_KEY` | `eyJ...` | 🔴 سري — بيتخطى RLS |
-| `VITE_SUPABASE_URL` | `https://xxxxx.supabase.co` | |
-| `VITE_SUPABASE_ANON_KEY` | `eyJ...` | آمن للمتصفح |
-| `VITE_USE_BACKEND` | `true` | تفعيل الـ proxy mode |
-| `APP_URL` | `https://your-app.vercel.app` | للـ referer وredirect الدفع |
-
-### الدفع (LemonSqueezy)
-
-| Variable | Value | Note |
-|----------|-------|------|
-| `LEMONSQUEEZY_API_KEY` | `...` | 🔴 سري |
-| `LEMONSQUEEZY_WEBHOOK_SECRET` | `...` | 🔴 سري |
-| `VITE_LEMONSQUEEZY_STORE_ID` | `123456` | |
-| `VITE_LEMON_VARIANT_BASIC` | `1318412` | |
-| `VITE_LEMON_VARIANT_PRO` | `1318421` | |
-| `VITE_LEMON_VARIANT_PREMIUM` | `1318422` | |
-
-### اختياري
-
-| Variable | Default | Note |
-|----------|---------|------|
-| `ALLOWED_ORIGINS` | `*.vercel.app` | دومينات إضافية، مفصولة بفاصلة |
-| `RATE_LIMIT_MAX` | `30` | طلبات لكل نافذة |
-| `RATE_LIMIT_WINDOW` | `60000` | حجم النافذة بالملي ثانية |
-
-> 🚫 **متحطش `ALLOW_ANONYMOUS` على Vercel أبداً.** ده بيلغي التحقق من الهوية
-> وخصم الرصيد — يعني بيحوّل الـ API لـ proxy مجاني لمفتاح OpenRouter بتاعك.
-> `VITE_ADMIN_EMAILS` مابقاش مستخدم؛ الأدمن بقى عمود `is_admin` في الداتابيز.
-
-5. اضغط **Deploy** ✅
+الـ schema **بيتطبّق لوحده** عند الإقلاع — `server/src/migrate.js` بيشغّل أي
+ملف في `server/migrations/` لسه ماتطبّقش، وبيسجّله في جدول `schema_migrations`.
+مفيش خطوة يدوية.
 
 ---
 
-## الخطوة 4: ربط الـ Webhook
+## الخطوة 6: أول أدمن
 
-1. في LemonSqueezy → **Settings** → **Webhooks** → **+**
-2. URL: `https://your-app.vercel.app/api/lemonsqueezy-webhook`
-3. Signing secret: نفس قيمة `LEMONSQUEEZY_WEBHOOK_SECRET`
-4. فعّل الأحداث: `order_created`, `subscription_created`,
-   `subscription_updated`, `subscription_cancelled`, `subscription_expired`
-5. اعمل عملية شراء تجريبية وتأكد من الـ logs إن الرصيد اتضاف
+سجّل حساب من الموقع، وبعدين من **Coolify → kemo-db → Terminal**:
+
+```sql
+UPDATE users SET is_admin = TRUE WHERE LOWER(email) = LOWER('you@example.com');
+```
+
+الأدمن عمود في قاعدة البيانات، مش متغيّر بيئة ولا قائمة إيميلات في الواجهة —
+عشان محدش يقدر يرقّي نفسه من المتصفح.
 
 ---
 
-## الخطوة 5: التحقق
+## الخطوة 7: الـ Webhook (لو مفعّل الدفع)
 
-- [ ] الموقع بيفتح بشكل طبيعي
-- [ ] `https://your-app.vercel.app/api/health` → بيرجّع JSON
-- [ ] من غير تسجيل دخول: `POST /api/generate` بيرجّع **401** (مش 200)
-- [ ] بعد تسجيل الدخول: التوليد بيشتغل والرصيد بينقص في الـ sidebar
-- [ ] لما الرصيد يخلص: بتظهر رسالة "Not enough credits" مش خطأ عام
-- [ ] `/admin` بيرفض أي حساب مش `is_admin = TRUE`
-- [ ] DevTools → Network → مفيش أي API key ظاهر
+1. LemonSqueezy → **Settings → Webhooks → +**
+2. URL: `https://kemo.example.com/api/lemonsqueezy-webhook`
+3. Signing secret: نفس `LEMONSQUEEZY_WEBHOOK_SECRET`
+4. الأحداث: `order_created`, `subscription_created`, `subscription_updated`,
+   `subscription_cancelled`, `subscription_expired`
+5. اعمل شراء تجريبي وتأكد من السجلات إن الرصيد اتضاف
+
+---
+
+## التحقق بعد النشر
+
+```bash
+curl -s https://kemo.example.com/api/health
+```
+المفروض يرجّع `{"status":"ok","version":"2.0.0",...}`
+
+قائمة الفحص:
+
+- [ ] الموقع بيفتح وصفحة التسجيل ظاهرة
+- [ ] إنشاء حساب بيشتغل وبيدّي 20 رصيد
+- [ ] `POST /api/generate` من غير تسجيل دخول بيرجّع **401**
+- [ ] بعد تسجيل الدخول التوليد بيشتغل والرصيد بينقص في الشريط الجانبي
+- [ ] لما الرصيد يخلص بتظهر رسالة "Not enough credits" مش خطأ عام
+- [ ] `/admin` بيرجّع **404** لأي حساب مش `is_admin`
+- [ ] DevTools → Application → Cookies: `kemo_session` عليه `HttpOnly` و`Secure`
+- [ ] DevTools → Network: مفيش أي مفتاح API ظاهر
 
 ### اختبار سريع إن الـ API مقفول
 
 ```bash
-curl -i -X POST https://your-app.vercel.app/api/generate -H "Content-Type: application/json" -d '{"prompt":"test"}'
+curl -i -X POST https://kemo.example.com/api/generate -H "Content-Type: application/json" -d '{"prompt":"test"}'
 ```
 
-المفروض يرجّع `401 Sign in required`. لو رجّع `200` يبقى فيه
-`ALLOW_ANONYMOUS=true` متحطوط بالغلط — امسحه فوراً واعمل redeploy.
+المفروض `401 Sign in required`.
 
 ---
 
-## التطوير المحلي
+## نموذج الأمان
+
+| الطبقة | الآلية |
+|---|---|
+| **الهوية** | bcrypt (cost 12)، ومسار فشل بزمن ثابت يمنع تعداد الحسابات |
+| **الجلسة** | JWT جواه معرّف جلسة؛ المعرّف مخزّن **مُجزّأً** فتسجيل الخروج بيلغي فعلاً |
+| **الكوكي** | `httpOnly` (XSS مايقدرش يقراه) + `Secure` + `SameSite=Lax` |
+| **التفويض** | على مستوى التطبيق — كل استعلام مُقيّد بـ `req.user.id` |
+| **الأدمن** | `users.is_admin`، والمسارات بترد **404** مش 403 عشان ماتعلنش عن نفسها |
+| **الرصيد** | الأسعار على السيرفر؛ خصم قبل الاستدعاء واسترجاع عند الفشل |
+| **الـ Webhook** | HMAC على البايتات الخام + حماية من التكرار لكل حدث |
+| **الترويسات** | CSP، HSTS، `nosniff`، `frame-ancestors`، `Permissions-Policy` |
+
+> **ليه مفيش RLS؟** سياسات RLS بتحمي قاعدة بيانات المتصفح بيكلّمها مباشرة.
+> هنا السيرفر هو الوحيد اللي معاه بيانات الاتصال، والتفويض في طبقة الـ API.
+
+---
+
+## حل المشاكل
+
+| المشكلة | السبب المرجّح |
+|---|---|
+| الحاوية بتقلع وتموت فوراً | متغير ناقص — `config.js` بيوقف عمداً. شوف السجل |
+| `Cannot reach the database` | `DATABASE_URL` غلط، أو رموز خاصة في الباسورد، أو القاعدة لسه بتقلع |
+| `JWT_SECRET must be at least 32 characters` | ولّد واحد جديد بالأمر اللي فوق |
+| `401 Sign in required` | الجلسة انتهت — سجّل دخول تاني |
+| `402 Not enough credits` | الرصيد خلص — من صفحة Pricing |
+| `502 AI service error` | مفتاح OpenRouter ملغي أو رصيده خلص |
+| الدفع نجح والرصيد مازاد | راجع سجلات الـ webhook: توقيع غلط أو variant IDs مش مظبوطة |
+| `/admin` بيرجّع 404 | شغّل جملة `UPDATE users SET is_admin = TRUE` |
+| الشهادة مااتجددتش | البورت 80 مقفول |
+
+### قراءة السجلات
 
 ```bash
-vercel dev
+docker logs $(docker ps -aq --filter "name=kemo-engine" | head -1) --tail 100
 ```
-
-بيشغّل نفس الـ serverless functions بتاعة الإنتاج — بالتحقق من الهوية وخصم
-الرصيد. ده الطريقة المفضلة.
-
-البديل (`cd server && npm run dev`) بيشغّل proxy بسيط من غير أي auth أو خصم
-رصيد، وبيرفض يشتغل غير لما تحط `ALLOW_ANONYMOUS=true` في `server/.env`.
 
 ---
 
-## حل المشاكل الشائعة
+## التحديثات
 
-| المشكلة | الحل |
-|---------|------|
-| `503 authentication unavailable` | ناقص `SUPABASE_SERVICE_ROLE_KEY` في Vercel |
-| `401 Sign in required` | المستخدم مش مسجّل دخول، أو الـ session خلصت |
-| `402 Not enough credits` | الرصيد خلص — اشحن من صفحة Pricing |
-| `403 Origin not allowed` | ضيف الدومين لـ `ALLOWED_ORIGINS` |
-| الدفع نجح والرصيد مازاد | راجع logs الـ webhook: توقيع غلط أو الـ variant IDs مش مظبوطة |
-| `500 Server not configured` | ناقص `OPENROUTER_API_KEY` |
-| الموقع أبيض/فارغ | راجع الـ build في Vercel dashboard |
-| Login مش شغال | راجع `VITE_SUPABASE_URL` و `VITE_SUPABASE_ANON_KEY` |
-| `404` على الصفحات | اتأكد إن `vercel.json` موجود في الـ root |
-| `/admin` بيقول Access Denied | شغّل `UPDATE public.profiles SET is_admin = TRUE ...` |
+```bash
+git push
+```
+
+Coolify بيعمل إعادة بناء ونشر. الـ migrations الجديدة بتتطبّق عند الإقلاع،
+والإيقاف نظيف (`dumb-init` بيمرّر SIGTERM) فالطلبات الجارية بتخلص الأول.

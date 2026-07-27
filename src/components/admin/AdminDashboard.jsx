@@ -760,9 +760,10 @@ const AdminDashboard = () => {
                                 </h3>
                                 <div className="space-y-2">
                                     {[
+                                        // The overview call only succeeds when the API and its
+                                        // database are both up, so reaching this render proves both.
+                                        { label: 'API', status: true, icon: Server },
                                         { label: 'Database', status: true, icon: Database },
-                                        { label: 'OpenRouter API', status: true, icon: Server },
-                                        { label: 'Vercel CDN', status: true, icon: Wifi },
                                     ].map(sys => (
                                         <div key={sys.label} className="flex items-center justify-between p-3 rounded-lg bg-white/[0.02]">
                                             <div className="flex items-center gap-2"><sys.icon className="w-4 h-4 text-zinc-500" /><span className="text-sm text-zinc-300">{sys.label}</span></div>
