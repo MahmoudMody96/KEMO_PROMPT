@@ -28,9 +28,9 @@ FROM node:22-alpine AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 
-# dumb-init reaps zombies and forwards SIGTERM, so Coolify redeploys shut the
-# server down cleanly instead of killing it mid-request.
-RUN apk add --no-cache dumb-init
+# No init wrapper: the app spawns no child processes, so there are no zombies
+# to reap, and index.js installs its own SIGTERM handler for clean shutdown.
+# Skipping it also drops the only build step that needs the Alpine package CDN.
 
 COPY server/package.json server/package-lock.json* ./server/
 RUN cd server && npm ci --omit=dev && npm cache clean --force
@@ -52,5 +52,4 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
     CMD node -e "fetch('http://127.0.0.1:3000/api/health').then(()=>process.exit(0)).catch(()=>process.exit(1))"
 
-ENTRYPOINT ["dumb-init", "--"]
 CMD ["node", "server/src/index.js"]
