@@ -66,12 +66,32 @@ app.use((req, res, next) => {
     next();
 });
 
-// --- health (before anything that can fail) -----------------------------
-app.get('/api/health', (req, res) => res.json({
-    status: 'ok',
-    version: '2.0.0',
-    timestamp: new Date().toISOString(),
-}));
+// --- readiness ----------------------------------------------------------
+// The server binds its port before touching the database. A container that
+// dies on a bad DATABASE_URL leaves you nothing to inspect; one that stays up
+// and reports why is diagnosable from outside.
+const readiness = { db: 'connecting', migrations: 'pending', error: null };
+
+app.get('/api/health', (req, res) => {
+    const healthy = readiness.db === 'ready' && readiness.migrations === 'done';
+    res.status(healthy ? 200 : 503).json({
+        status: healthy ? 'ok' : 'starting',
+        version: '2.0.0',
+        db: readiness.db,
+        migrations: readiness.migrations,
+        error: readiness.error,
+        timestamp: new Date().toISOString(),
+    });
+});
+
+// Anything that needs data must wait for the database rather than throw a
+// confusing 500 from deep inside a query.
+function requireReady(req, res, next) {
+    if (readiness.db !== 'ready' || readiness.migrations !== 'done') {
+        return res.status(503).json({ error: 'Server is starting up. Please retry shortly.' });
+    }
+    next();
+}
 
 // --- parsers ------------------------------------------------------------
 // The webhook is parsed as raw bytes because its HMAC covers exactly what
@@ -91,12 +111,12 @@ app.use(cookieParser());
 app.use('/api', attachUser);
 
 // --- API ----------------------------------------------------------------
-app.use('/api/auth', authRoutes);
-app.use('/api', aiRoutes);            // /api/generate, /api/vision
-app.use('/api', billingRoutes);       // /api/create-checkout
-app.use('/api/projects', projectRoutes);
-app.use('/api/account', accountRoutes);
-app.use('/api/admin', adminRoutes);
+app.use('/api/auth', requireReady, authRoutes);
+app.use('/api', requireReady, aiRoutes);            // /api/generate, /api/vision
+app.use('/api', requireReady, billingRoutes);       // /api/create-checkout
+app.use('/api/projects', requireReady, projectRoutes);
+app.use('/api/account', requireReady, accountRoutes);
+app.use('/api/admin', requireReady, adminRoutes);
 
 // An unmatched /api/* must not fall through to index.html, or the client gets
 // HTML where it expected JSON and the error is a mystery.
@@ -125,40 +145,69 @@ app.use((err, req, res, _next) => {
 });
 
 // --- boot ---------------------------------------------------------------
-async function start() {
-    try {
-        const now = await assertConnection();
-        console.log(`[DB] connected (${now})`);
-    } catch (err) {
-        console.error('❌ Cannot reach the database:', err.message);
-        process.exit(1);
-    }
+//
+// The port opens first, then the database work happens in the background. If
+// the database is unreachable the container stays up and /api/health says so,
+// instead of exiting and leaving a deploy log as the only clue.
+const server = app.listen(config.port, () => {
+    console.log('');
+    console.log('╔════════════════════════════════════════════╗');
+    console.log('║  🚀 Kemo Engine v2.0                       ║');
+    console.log(`║  📡 http://0.0.0.0:${String(config.port).padEnd(24)}║`);
+    console.log('║  🔒 auth + credits enforced                ║');
+    console.log('╚════════════════════════════════════════════╝');
+    console.log('');
+});
 
-    await runMigrations();
+async function connectDatabase() {
+    // Postgres often takes a few seconds longer than the app to accept
+    // connections on a cold start, so retry before giving up.
+    for (let attempt = 1; attempt <= 10; attempt++) {
+        try {
+            const now = await assertConnection();
+            readiness.db = 'ready';
+            readiness.error = null;
+            console.log(`[DB] connected (${now})`);
+            return true;
+        } catch (err) {
+            readiness.db = 'error';
+            readiness.error = err.message;
+            console.error(`[DB] attempt ${attempt}/10 failed: ${err.message}`);
+            await new Promise(r => setTimeout(r, 3000));
+        }
+    }
+    console.error('❌ Database unreachable. The server is up but every data route returns 503.');
+    return false;
+}
+
+async function boot() {
+    if (!await connectDatabase()) return;
+
+    try {
+        await runMigrations();
+        readiness.migrations = 'done';
+    } catch (err) {
+        readiness.migrations = 'error';
+        readiness.error = err.message;
+        console.error('❌ Migrations failed:', err.message);
+        return;
+    }
 
     // Cheap housekeeping; expired rows have no use.
     setInterval(() => {
         purgeExpiredSessions().catch(e => console.error('[SESSIONS] purge failed:', e.message));
     }, 6 * 60 * 60 * 1000).unref();
 
-    const server = app.listen(config.port, () => {
-        console.log('');
-        console.log('╔════════════════════════════════════════════╗');
-        console.log('║  🚀 Kemo Engine v2.0                       ║');
-        console.log(`║  📡 http://0.0.0.0:${String(config.port).padEnd(24)}║`);
-        console.log(`║  🔒 auth + credits enforced                ║`);
-        console.log('╚════════════════════════════════════════════╝');
-        console.log('');
-    });
-
-    // Coolify sends SIGTERM on redeploy; finish in-flight requests first.
-    const shutdown = (signal) => {
-        console.log(`[${signal}] shutting down`);
-        server.close(() => pool.end().then(() => process.exit(0)));
-        setTimeout(() => process.exit(1), 10_000).unref();
-    };
-    process.on('SIGTERM', () => shutdown('SIGTERM'));
-    process.on('SIGINT', () => shutdown('SIGINT'));
+    console.log('[BOOT] ready');
 }
 
-start();
+boot();
+
+// Coolify sends SIGTERM on redeploy; finish in-flight requests first.
+const shutdown = (signal) => {
+    console.log(`[${signal}] shutting down`);
+    server.close(() => pool.end().then(() => process.exit(0)));
+    setTimeout(() => process.exit(1), 10_000).unref();
+};
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
