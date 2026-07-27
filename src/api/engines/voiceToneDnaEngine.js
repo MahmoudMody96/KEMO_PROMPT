@@ -8,7 +8,7 @@
 // Used by generateSystemPrompt() to enforce consistent vocal identity.
 // ═══════════════════════════════════════════════════════════════════
 export const getVoiceToneDNA = (tone) => {
-    const normalize = (s) => (s || '').toLowerCase().replace(/[\s_\-\/]+/g, '');
+    const normalize = (s) => (s || '').toLowerCase().replace(/[\s_\-/]+/g, '');
     const t = normalize(tone);
 
     // 1. Professional / Authoritative

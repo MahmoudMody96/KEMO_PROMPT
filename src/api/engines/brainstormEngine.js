@@ -180,13 +180,12 @@ export async function brainstorm_concept(inputs) {
         const secondaryChars = (inputs.characters?.secondary || []).filter(s => s);
         const secondaryCharsText = secondaryChars.length > 0 ? ` | شخصيات فرعية: ${secondaryChars.join('، ')}` : '';
         const seedIdea = inputs.coreIdea?.trim() || '';
-        const seedText = seedIdea ? ` | 🌱 بذرة الفكرة: "${seedIdea}"` : '';
         const userMessage = seedIdea
             ? `ولّد 3 أفكار فيديو **مبنية على** هذه البذرة: "${seedIdea}" | ${inputs.genre || 'Creative'} | ${inputs.videoStyle || 'Cinematic'} | بطل: ${primaryChar}${secondaryCharsText}. ابني على الفكرة دي وطوّرها في 3 اتجاهات مختلفة. JSON فقط.`
             : `ولّد 3 أفكار فيديو عن: ${inputs.genre || 'Creative'} | ${inputs.videoStyle || 'Cinematic'} | بطل: ${primaryChar}${secondaryCharsText}. JSON فقط.`;
 
         // v13.0: 1800 tokens for 3 rich ideas (title + hook + lesson), 0.82 temp for higher creative diversity
-        const result = await callOpenRouter(userMessage, TEXT_MODEL, false, 1800, 0.82, ideaSystemPrompt);
+        const result = await callOpenRouter(userMessage, TEXT_MODEL, false, 1800, 0.82, ideaSystemPrompt, 'brainstorm');
         return result;
     } catch (error) {
         console.error('[ERROR] brainstorm_concept failed:', error);
@@ -327,11 +326,9 @@ export const generateIdeaPrompt = (currentSettings) => {
     const characterType = currentSettings.characters?.primary || currentSettings.characterType || 'Auto';
     const secondaryCharacters = (currentSettings.characters?.secondary || []).filter(s => s);
     const numCharacters = String(1 + secondaryCharacters.length);
-    const duration = currentSettings.duration || 15;
 
     const voiceTone = currentSettings.voiceTone || 'Professional';
     const videoLanguage = currentSettings.videoLanguage || 'Egyptian (Masri)';
-    const aspectRatio = currentSettings.aspectRatio || '16:9';
     const modifiers = currentSettings.modifiers || '';
     const prohibitions = currentSettings.prohibitions || '';
     const previousTitles = currentSettings._previousTitles || [];

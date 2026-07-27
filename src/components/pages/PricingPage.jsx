@@ -4,12 +4,15 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useAppContext } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
 import { Check, X, Sparkles, Crown, Zap, Rocket, ArrowRight, Star, ExternalLink, Loader2 } from 'lucide-react';
+import { billing } from '../../lib/apiClient';
 
 // --- LemonSqueezy Variant IDs (from .env) ---
+// No hardcoded fallbacks: a missing env var must fail loudly here rather than
+// send buyers to a variant that no longer exists.
 const VARIANTS = {
-    basic: import.meta.env.VITE_LEMON_VARIANT_BASIC || '1318412',
-    pro: import.meta.env.VITE_LEMON_VARIANT_PRO || '1318421',
-    premium: import.meta.env.VITE_LEMON_VARIANT_PREMIUM || '1318422',
+    basic: import.meta.env.VITE_LEMON_VARIANT_BASIC || '',
+    pro: import.meta.env.VITE_LEMON_VARIANT_PRO || '',
+    premium: import.meta.env.VITE_LEMON_VARIANT_PREMIUM || '',
 };
 
 const PricingPage = () => {
@@ -29,28 +32,24 @@ const PricingPage = () => {
     // Handle checkout via API
     const handleCheckout = useCallback(async (planId) => {
         const variantId = VARIANTS[planId];
-        if (!variantId) return;
+        if (!variantId) {
+            setError(isAr
+                ? 'هذه الباقة غير مُعدّة حالياً — تواصل معنا'
+                : 'This plan is not configured yet — please contact us');
+            return;
+        }
+        if (!user) {
+            setError(isAr ? 'سجّل الدخول أولاً لإتمام الشراء' : 'Please sign in before purchasing');
+            return;
+        }
 
         setLoadingPlan(planId);
         setError(null);
 
         try {
-            // Call our serverless function to create a checkout
-            const res = await fetch('/api/create-checkout', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    variantId,
-                    userId: user?.id || '',
-                    userEmail: user?.email || '',
-                }),
-            });
-
-            const data = await res.json();
-
-            if (!res.ok) {
-                throw new Error(data.error || 'Failed to create checkout');
-            }
+            // The server reads the buyer's identity from the session cookie —
+            // sending a user id in the body would let anyone credit someone else.
+            const data = await billing.createCheckout(variantId);
 
             if (data.url) {
                 // Try overlay first
@@ -63,7 +62,7 @@ const PricingPage = () => {
             }
         } catch (err) {
             console.error('Checkout error:', err);
-            setError(isAr ? 'حدث خطأ أثناء فتح صفحة الدفع' : 'Error opening checkout');
+            setError(err.message || (isAr ? 'حدث خطأ أثناء فتح صفحة الدفع' : 'Error opening checkout'));
         } finally {
             setTimeout(() => setLoadingPlan(null), 1000);
         }

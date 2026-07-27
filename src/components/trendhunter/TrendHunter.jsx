@@ -163,7 +163,7 @@ const DNAModal = ({ isOpen, onClose, onGenerate, t, isRTL, textDir }) => {
 };
 
 const TrendHunter = () => {
-    const { setActiveTab, updateGeneratorInput, t, language, isRTL, textDir, flexDir } = useAppContext();
+    const { setActiveTab, updateGeneratorInput, t, language, isRTL, textDir } = useAppContext();
     const toast = useToast();
 
     const [state, setState] = useState(STATES.SEARCH);
@@ -272,9 +272,6 @@ Apply this viral formula to my video.`;
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
     };
-
-    // Get translated trend tags
-    const trendTags = t('trendTags') || ['TikTok Trends', 'YouTube Shorts', 'Reels Formulas', 'Viral Hooks'];
 
     // Platform label helper
     const getPlatformLabel = (id) => {

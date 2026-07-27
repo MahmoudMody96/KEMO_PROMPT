@@ -1,218 +1,122 @@
-// src/services/creditsService.js — Credits & Usage Tracking
-// Works in DUAL MODE:
-//   LOCAL MODE: No restrictions, unlimited usage
-//   SUPABASE MODE: Deducts credits, tracks usage, enforces limits
+// src/services/creditsService.js — Read-only credit view + project storage.
+//
+// Credits are spent by the server as part of the same request that calls the
+// AI. Nothing here deducts anything: a browser-side deduction is advisory at
+// best and trivially skipped at worst.
 
-import { getSupabase, isSupabaseConfigured } from '../lib/supabase';
+import { account, projects as projectsApi } from '../lib/apiClient';
 
-// Credit costs per action
-export const CREDIT_COSTS = {
-    brainstorm: 1,    // Generate 6 ideas
-    generate: 3,      // Generate full blueprint
-    extract: 2,       // Extract from video/image
-    trend_search: 1,  // Search trends
-};
+// Mirrors server/src/lib/credits.js. Display only — the server prices every action.
+export const CREDIT_COSTS = Object.freeze({
+    brainstorm: 1,
+    generate: 3,
+    extract: 2,
+    trend_search: 1,
+    architect: 2,
+});
 
-// Plan limits
+// Must stay in sync with PricingPage.jsx and server/src/routes/billing.js.
 export const PLANS = {
     free: {
         name: 'Free',
         name_ar: 'مجاني',
         credits_monthly: 20,
         price_monthly: 0,
-        features: ['20 credits/month', 'Basic models', 'Community support'],
-        features_ar: ['20 رصيد/شهر', 'نماذج أساسية', 'دعم مجتمعي'],
+        features: ['20 credits on signup', 'Basic models', 'Community support'],
+        features_ar: ['20 رصيد عند التسجيل', 'نماذج أساسية', 'دعم مجتمعي'],
+    },
+    basic: {
+        name: 'Basic',
+        name_ar: 'الأساسي',
+        credits_monthly: 200,
+        price_monthly: 6.99,
+        features: ['200 credits/month', 'Full Prompt Architect', 'Trend Hunter', 'Email support'],
+        features_ar: ['200 رصيد/شهر', 'مهندس البرومبت الكامل', 'صيّاد الترندات', 'دعم بالبريد'],
     },
     pro: {
-        name: 'Pro',
-        name_ar: 'احترافي',
-        credits_monthly: 200,
-        price_monthly: 9.99,
-        features: ['200 credits/month', 'Premium models', 'Priority support', 'Export history'],
-        features_ar: ['200 رصيد/شهر', 'نماذج متقدمة', 'دعم أولوية', 'تصدير التاريخ'],
+        name: 'Professional',
+        name_ar: 'المحترف',
+        credits_monthly: 500,
+        price_monthly: 14.99,
+        features: ['500 credits/month', 'Premium models', 'Priority support', 'Export history'],
+        features_ar: ['500 رصيد/شهر', 'نماذج متقدمة', 'دعم أولوية', 'تصدير التاريخ'],
     },
     enterprise: {
         name: 'Enterprise',
         name_ar: 'مؤسسي',
-        credits_monthly: 1000,
+        credits_monthly: 9999,
         price_monthly: 29.99,
-        features: ['1000 credits/month', 'All models', 'API access', 'Custom branding', 'Team features'],
-        features_ar: ['1000 رصيد/شهر', 'كل النماذج', 'وصول API', 'علامة تجارية مخصصة', 'ميزات الفريق'],
+        features: ['Effectively unlimited credits', 'All models', 'API access', 'Team features'],
+        features_ar: ['رصيد شبه غير محدود', 'كل النماذج', 'وصول API', 'ميزات الفريق'],
     },
 };
 
 /**
- * Check if user has enough credits for an action
- * In LOCAL MODE: always returns true
+ * Current balance, or null when it cannot be determined.
+ * Callers must treat null as "unknown", not as "unlimited".
  */
-export async function hasCredits(userId, action) {
-    if (!isSupabaseConfigured() || !userId || userId === 'guest') return true;
-
+export async function getCreditBalance() {
     try {
-        const supabase = await getSupabase();
-        if (!supabase) return true;
-
-        const { data, error } = await supabase
-            .from('profiles')
-            .select('credits_remaining')
-            .eq('id', userId)
-            .single();
-
-        if (error) throw error;
-        return (data?.credits_remaining || 0) >= (CREDIT_COSTS[action] || 1);
+        return await account.credits();
     } catch (err) {
-        console.error('Credits check error:', err);
-        return true; // Fail open for now
-    }
-}
-
-/**
- * Deduct credits for an action
- * Returns { success: boolean, remaining: number }
- */
-export async function deductCredits(userId, action) {
-    if (!isSupabaseConfigured() || !userId || userId === 'guest') {
-        return { success: true, remaining: 999 };
-    }
-
-    try {
-        const supabase = await getSupabase();
-        if (!supabase) return { success: true, remaining: 999 };
-
-        const cost = CREDIT_COSTS[action] || 1;
-
-        const { data, error } = await supabase.rpc('deduct_credits', {
-            p_user_id: userId,
-            p_amount: cost,
-            p_type: `usage_${action}`
-        });
-
-        if (error) throw error;
-
-        if (!data) {
-            return { success: false, remaining: 0, error: 'Insufficient credits' };
-        }
-
-        // Get updated balance
-        const { data: profile } = await supabase
-            .from('profiles')
-            .select('credits_remaining')
-            .eq('id', userId)
-            .single();
-
-        return { success: true, remaining: profile?.credits_remaining || 0 };
-    } catch (err) {
-        console.error('Credit deduction error:', err);
-        return { success: true, remaining: 999 }; // Fail open
-    }
-}
-
-/**
- * Log usage event for analytics
- */
-export async function logUsage(userId, action, details = {}) {
-    if (!isSupabaseConfigured() || !userId || userId === 'guest') return;
-
-    try {
-        const supabase = await getSupabase();
-        if (!supabase) return;
-
-        await supabase.from('usage_logs').insert({
-            user_id: userId,
-            action_type: action,
-            credits_consumed: CREDIT_COSTS[action] || 1,
-            model_used: details.model || '',
-            tokens_used: details.tokens || 0,
-            input_summary: (details.summary || '').slice(0, 200),
-            success: details.success !== false,
-            error_message: details.error || null,
-            duration_ms: details.duration || 0,
-        });
-    } catch (err) {
-        console.error('Usage logging error:', err);
-    }
-}
-
-/**
- * Save a project
- */
-export async function saveProject(userId, projectData) {
-    if (!isSupabaseConfigured() || !userId || userId === 'guest') {
-        // Local mode: save to localStorage
-        const projects = JSON.parse(localStorage.getItem('promptforge_projects') || '[]');
-        const project = { ...projectData, id: Date.now().toString(), created_at: new Date().toISOString() };
-        projects.unshift(project);
-        localStorage.setItem('promptforge_projects', JSON.stringify(projects.slice(0, 50))); // Keep 50 max
-        return project;
-    }
-
-    try {
-        const supabase = await getSupabase();
-        if (!supabase) return null;
-
-        const { data, error } = await supabase
-            .from('projects')
-            .insert({ user_id: userId, ...projectData })
-            .select()
-            .single();
-
-        if (error) throw error;
-        return data;
-    } catch (err) {
-        console.error('Save project error:', err);
+        console.error('Balance check error:', err.message);
         return null;
     }
 }
 
-/**
- * Load user's projects
- */
-export async function loadProjects(userId, limit = 20) {
-    if (!isSupabaseConfigured() || !userId || userId === 'guest') {
-        return JSON.parse(localStorage.getItem('promptforge_projects') || '[]');
-    }
-
+/** Recent credit movements (audit trail). */
+export async function getCreditHistory(limit = 20) {
     try {
-        const supabase = await getSupabase();
-        if (!supabase) return [];
-
-        const { data, error } = await supabase
-            .from('projects')
-            .select('*')
-            .eq('user_id', userId)
-            .order('created_at', { ascending: false })
-            .limit(limit);
-
-        if (error) throw error;
-        return data || [];
+        const { transactions } = await account.transactions(limit);
+        return transactions || [];
     } catch (err) {
-        console.error('Load projects error:', err);
+        console.error('Credit history error:', err.message);
         return [];
     }
 }
 
-/**
- * Get user's credit balance
- */
-export async function getCreditBalance(userId) {
-    if (!isSupabaseConfigured() || !userId || userId === 'guest') {
-        return { credits_remaining: 999, credits_used: 0, plan: 'free' };
-    }
-
+/** Usage totals per action, for the profile screen. */
+export async function getUsageSummary() {
     try {
-        const supabase = await getSupabase();
-        if (!supabase) return { credits_remaining: 999, credits_used: 0, plan: 'free' };
-
-        const { data, error } = await supabase
-            .from('profiles')
-            .select('credits_remaining, credits_used, plan')
-            .eq('id', userId)
-            .single();
-
-        if (error) throw error;
-        return data || { credits_remaining: 0, credits_used: 0, plan: 'free' };
+        const { usage } = await account.usage();
+        return (usage || []).reduce((totals, row) => {
+            totals[row.action_type] = row.credits;
+            return totals;
+        }, {});
     } catch (err) {
-        console.error('Balance check error:', err);
-        return { credits_remaining: 999, credits_used: 0, plan: 'free' };
+        console.error('Usage summary error:', err.message);
+        return {};
+    }
+}
+
+/** Save a project. */
+export async function saveProject(projectData) {
+    try {
+        const { project } = await projectsApi.create(projectData);
+        return project;
+    } catch (err) {
+        console.error('Save project error:', err.message);
+        return null;
+    }
+}
+
+/** Load the user's projects, newest first. */
+export async function loadProjects(limit = 20) {
+    try {
+        const { projects } = await projectsApi.list(limit);
+        return projects || [];
+    } catch (err) {
+        console.error('Load projects error:', err.message);
+        return [];
+    }
+}
+
+export async function deleteProject(id) {
+    try {
+        await projectsApi.remove(id);
+        return true;
+    } catch (err) {
+        console.error('Delete project error:', err.message);
+        return false;
     }
 }

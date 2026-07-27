@@ -11,9 +11,11 @@ import React from 'react';
  */
 const VisualSelector = ({ options = [], value, onChange, isRTL }) => (
     <div className={`selector-group ${isRTL ? 'flex-row-reverse' : ''}`}>
-        {(options || []).map((opt) => (
+        {(options || []).map((opt, index) => (
             <button
-                key={opt?.value || Math.random()}
+                // Index, not Math.random(): a fresh random key on every render
+                // remounts every button and drops focus mid-interaction.
+                key={opt?.value ?? `option-${index}`}
                 onClick={() => onChange(opt?.value)}
                 className={`selector-btn ${value === opt?.value ? 'active' : ''}`}
             >

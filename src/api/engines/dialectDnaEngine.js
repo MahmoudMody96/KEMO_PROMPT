@@ -8,7 +8,7 @@
 // Used by generateSystemPrompt() to enforce authentic dialect usage.
 // ═══════════════════════════════════════════════════════════════════
 export const getDialectDNA = (dialect) => {
-    const normalize = (s) => (s || '').toLowerCase().replace(/[\s_\-\/()]+/g, '');
+    const normalize = (s) => (s || '').toLowerCase().replace(/[\s_\-/()]+/g, '');
     const d = normalize(dialect);
 
     // ═══ ARABIC DIALECTS ═══

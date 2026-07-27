@@ -1,5 +1,5 @@
 // src/components/secretvault/SecretVault.jsx
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useAppContext } from '../../context/AppContext';
 import { VAULT_CATEGORIES, VAULT_PROMPTS } from './vaultData';
 import {

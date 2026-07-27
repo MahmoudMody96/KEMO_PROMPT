@@ -1,181 +1,120 @@
-// src/context/AuthContext.jsx — Authentication Context
-// Provides auth state throughout the app
-// Works in 2 modes:
-//   1. LOCAL MODE (no Supabase) — guest access, no login required
-//   2. SUPABASE MODE — full auth with login/signup/OAuth
+// src/context/AuthContext.jsx — Authentication state.
+//
+// Talks to our own /api/auth/*. The session is an httpOnly cookie, so there is
+// no token in JavaScript to store, refresh, or leak: `me()` is what tells us
+// whether a session exists.
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { getSupabase, isSupabaseConfigured } from '../lib/supabase';
+import { auth as authApi } from '../lib/apiClient';
+import { CREDITS_CHANGED_EVENT } from '../lib/events';
 
 const AuthContext = createContext(null);
-
-
 
 export function AuthProvider({ children }) {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [isAuthEnabled, setIsAuthEnabled] = useState(false);
 
-    // Initialize auth
-    useEffect(() => {
-        let subscription = null;
-
-        const init = async () => {
-            try {
-                if (isSupabaseConfigured()) {
-                    const supabase = await getSupabase();
-                    if (supabase) {
-                        setIsAuthEnabled(true);
-
-                        // Get current session
-                        const { data: { session } } = await supabase.auth.getSession();
-                        if (session?.user) {
-                            setUser({
-                                id: session.user.id,
-                                email: session.user.email,
-                                display_name: session.user.user_metadata?.display_name || session.user.email?.split('@')[0],
-                                plan: 'free',
-                                credits_remaining: 50,
-                                isGuest: false
-                            });
-                        }
-
-                        // Listen for auth changes (with cleanup)
-                        const { data } = supabase.auth.onAuthStateChange((_event, session) => {
-                            if (session?.user) {
-                                setUser({
-                                    id: session.user.id,
-                                    email: session.user.email,
-                                    display_name: session.user.user_metadata?.display_name || session.user.email?.split('@')[0],
-                                    plan: 'free',
-                                    credits_remaining: 50,
-                                    isGuest: false
-                                });
-                            } else {
-                                setUser(null);
-                            }
-                        });
-                        subscription = data?.subscription;
-                    }
-                }
-                // Local mode — don't auto-login, show login page
-            } catch (err) {
-                console.error('Auth init error:', err);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        init();
-
-        // Cleanup: unsubscribe from auth changes on unmount
-        return () => {
-            if (subscription) {
-                subscription.unsubscribe();
-            }
-        };
+    // --- session bootstrap ------------------------------------------------
+    const loadUser = useCallback(async () => {
+        try {
+            const { user: current } = await authApi.me();
+            setUser(current || null);
+            return current || null;
+        } catch (err) {
+            // Anonymous is a normal state, not a failure to report.
+            console.debug('[auth] no active session:', err.message);
+            setUser(null);
+            return null;
+        }
     }, []);
 
-    // Sign up with email
-    const signUp = useCallback(async (email, password, displayName) => {
-        if (!isAuthEnabled) return { error: 'Auth not configured' };
+    useEffect(() => {
+        let cancelled = false;
+        // Wrapped so the effect body itself doesn't call setState synchronously;
+        // the state change lands in the promise callback, after the render.
+        const bootstrap = async () => {
+            await loadUser();
+            if (!cancelled) setLoading(false);
+        };
+        bootstrap();
+        return () => { cancelled = true; };
+    }, [loadUser]);
 
-        setError(null);
-        try {
-            const supabase = await getSupabase();
-            const { data, error: authError } = await supabase.auth.signUp({
-                email,
-                password,
-                options: {
-                    data: { display_name: displayName }
-                }
-            });
+    // The backend charges credits as part of each generation, so the balance
+    // in state goes stale the moment one completes.
+    useEffect(() => {
+        const refresh = () => { loadUser(); };
+        window.addEventListener(CREDITS_CHANGED_EVENT, refresh);
+        return () => window.removeEventListener(CREDITS_CHANGED_EVENT, refresh);
+    }, [loadUser]);
 
-            if (authError) throw authError;
-            return { data };
-        } catch (err) {
-            setError(err.message);
-            return { error: err.message };
-        }
-    }, [isAuthEnabled]);
-
-    // Sign in with email
+    // --- actions ----------------------------------------------------------
     const signIn = useCallback(async (email, password) => {
-        if (!isAuthEnabled) return { error: 'Auth not configured' };
-
         setError(null);
         try {
-            const supabase = await getSupabase();
-            const { data, error: authError } = await supabase.auth.signInWithPassword({
-                email,
-                password
-            });
-
-            if (authError) throw authError;
-            return { data };
+            const { user: signedIn } = await authApi.login(email, password);
+            setUser(signedIn);
+            return { data: signedIn };
         } catch (err) {
             setError(err.message);
             return { error: err.message };
         }
-    }, [isAuthEnabled]);
+    }, []);
 
-    // Sign in with Google
-    const signInWithGoogle = useCallback(async () => {
-        if (!isAuthEnabled) return { error: 'Auth not configured' };
-
+    const signUp = useCallback(async (email, password, displayName) => {
+        setError(null);
         try {
-            const supabase = await getSupabase();
-            const { data, error: authError } = await supabase.auth.signInWithOAuth({
-                provider: 'google',
-                options: {
-                    redirectTo: window.location.origin
-                }
-            });
-
-            if (authError) throw authError;
-            return { data };
+            const { user: created } = await authApi.register(email, password, displayName);
+            setUser(created);
+            return { data: created };
         } catch (err) {
             setError(err.message);
             return { error: err.message };
         }
-    }, [isAuthEnabled]);
+    }, []);
 
-    // Sign out
     const signOut = useCallback(async () => {
-        if (!isAuthEnabled) {
-            setUser(null);
-            return;
-        }
-
         try {
-            const supabase = await getSupabase();
-            await supabase.auth.signOut();
-            setUser(null);
+            await authApi.logout();
+        } catch (err) {
+            console.error('[auth] sign out failed:', err.message);
+        }
+        setUser(null);
+    }, []);
+
+    const changePassword = useCallback(async (currentPassword, newPassword) => {
+        setError(null);
+        try {
+            await authApi.changePassword(currentPassword, newPassword);
+            return { ok: true };
         } catch (err) {
             setError(err.message);
+            return { error: err.message };
         }
-    }, [isAuthEnabled]);
+    }, []);
 
-
+    const refreshProfile = useCallback(() => loadUser(), [loadUser]);
 
     const value = {
         user,
         loading,
         error,
-        isAuthEnabled,
-        isGuest: false,
-        signUp,
+        isAdmin: user?.is_admin === true,
+        credits: user?.credits_remaining ?? null,
+        plan: user?.plan || 'free',
+        // Auth is always available now — it ships with the server rather than
+        // depending on an external service being configured.
+        isAuthEnabled: true,
+        profileLoading: loading,
         signIn,
-        signInWithGoogle,
+        signUp,
         signOut,
+        changePassword,
+        refreshProfile,
     };
 
-    return (
-        <AuthContext.Provider value={value}>
-            {children}
-        </AuthContext.Provider>
-    );
+    return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export const useAuth = () => {

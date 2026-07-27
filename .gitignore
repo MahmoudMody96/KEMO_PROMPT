@@ -37,3 +37,11 @@ build_output.txt
 # Security — prevent accidental key/cert commits
 *.pem
 *.key
+
+# Local helper scripts (not part of the app bundle)
+src/api/_extract.ps1
+
+# Tooling state (not part of the app)
+.claude-flow/
+.claude/proven-config.json
+.claude/.proven-config-version

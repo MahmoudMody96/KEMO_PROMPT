@@ -266,7 +266,7 @@ const ASPECT_RATIO_RULES = {
  * @param {string} characterType - The character type string from UI
  * @returns {string} Knowledge injection text for prompts
  */
-export function getCharacterKnowledge(specificObject, characterType) {
+export function getCharacterKnowledge(specificObject, _characterType) {
     if (!specificObject) return '';
 
     // Normalize the key — handle both value format and label format

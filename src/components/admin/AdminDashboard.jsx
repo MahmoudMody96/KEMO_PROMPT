@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { getSupabase, isSupabaseConfigured } from '../../lib/supabase';
+import { admin as adminApi } from '../../lib/apiClient';
 import {
     Users, BarChart3, CreditCard, Activity,
     TrendingUp, Clock, Shield, RefreshCw,
@@ -15,8 +15,11 @@ import {
     Database, Server, Wifi
 } from 'lucide-react';
 
-const ADMIN_EMAILS = (import.meta.env.VITE_ADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
-export const isAdmin = (user) => user?.email && ADMIN_EMAILS.includes(user.email.toLowerCase());
+// Admin status comes from profiles.is_admin, enforced by RLS in the database.
+// This helper only decides what to RENDER — it is not a security boundary:
+// a non-admin who forces this to true still sees nothing, because every query
+// they make is filtered by the same flag server-side.
+export const isAdmin = (user) => user?.is_admin === true;
 
 // ═══════════════════════════════════════
 // TRANSLATIONS
@@ -95,8 +98,6 @@ const translations = {
         accessDenied: 'Access Denied',
         adminOnly: 'This page is for administrators only',
         backToSite: '← Back to site',
-        supabaseNotConfigured: 'Supabase Not Configured',
-        addEnvVars: 'Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to your environment',
     },
     ar: {
         adminPanel: 'لوحة التحكم',
@@ -171,8 +172,6 @@ const translations = {
         accessDenied: 'الوصول مرفوض',
         adminOnly: 'هذه الصفحة للمسؤولين فقط',
         backToSite: '→ العودة للموقع',
-        supabaseNotConfigured: 'Supabase غير مُفعّل',
-        addEnvVars: 'أضف VITE_SUPABASE_URL و VITE_SUPABASE_ANON_KEY في إعدادات البيئة',
     },
 };
 
@@ -260,7 +259,7 @@ const UserRow = ({ user, onUpdateCredits, onUpdatePlan, tx }) => {
 // MAIN ADMIN DASHBOARD
 // ═══════════════════════════════════════
 const AdminDashboard = () => {
-    const { user, signOut } = useAuth();
+    const { user, signOut, profileLoading } = useAuth();
     const [lang, setLang] = useState('ar');
     const tx = translations[lang];
     const isRTL = lang === 'ar';
@@ -280,47 +279,54 @@ const AdminDashboard = () => {
     });
 
     const fetchData = useCallback(async () => {
-        if (!isSupabaseConfigured()) { setLoading(false); return; }
         setLoading(true);
         try {
-            const supabase = await getSupabase();
-            if (!supabase) return;
-            const { data: usersData } = await supabase.from('profiles').select('*').order(sortField, { ascending: sortDir === 'asc' });
-            const { data: logsData } = await supabase.from('usage_logs').select('*').order('created_at', { ascending: false }).limit(200);
-            const allUsers = usersData || [];
-            const allLogs = logsData || [];
-            const today = new Date().toISOString().split('T')[0];
-            const todayLogs = allLogs.filter(l => l.created_at?.startsWith(today));
-            setUsers(allUsers);
-            setUsageLogs(allLogs);
+            const [overview, userList, logList] = await Promise.all([
+                adminApi.overview(),
+                adminApi.users({ search: searchQuery, sort: sortField, dir: sortDir, limit: 200 }),
+                adminApi.logs({ action: logFilter, limit: 200 }),
+            ]);
+
+            setUsers(userList.users || []);
+            setUsageLogs(logList.logs || []);
             setStats({
-                totalUsers: allUsers.length,
-                activeToday: new Set(todayLogs.map(l => l.user_id)).size,
-                totalCreditsUsed: allUsers.reduce((sum, u) => sum + (u.credits_used || 0), 0),
-                totalGenerations: allLogs.length,
+                totalUsers: overview.users?.total || 0,
+                activeToday: overview.active_today || 0,
+                totalCreditsUsed: overview.users?.credits_used || 0,
+                totalGenerations: overview.requests?.total || 0,
+                planCounts: {
+                    free: overview.users?.free || 0,
+                    basic: overview.users?.basic || 0,
+                    pro: overview.users?.pro || 0,
+                    enterprise: overview.users?.enterprise || 0,
+                },
+                creditsRemaining: overview.users?.credits_remaining || 0,
+                successful: overview.requests?.successful || 0,
+                failed: overview.requests?.failed || 0,
             });
-        } catch (err) { console.error('Admin fetch error:', err); }
-        finally { setLoading(false); }
-    }, [sortField, sortDir]);
+        } catch (err) {
+            console.error('Admin fetch error:', err.message);
+        } finally {
+            setLoading(false);
+        }
+    }, [searchQuery, sortField, sortDir, logFilter]);
 
     useEffect(() => { fetchData(); }, [fetchData]);
 
+    // These writes succeed only for a profile whose is_admin flag is set — the
+    // "Admins can update any profile" policy is what permits them.
     const handleUpdateCredits = async (userId, newCredits) => {
         try {
-            const supabase = await getSupabase();
-            if (!supabase) return;
-            await supabase.from('profiles').update({ credits_remaining: newCredits }).eq('id', userId);
+            await adminApi.updateUser(userId, { credits_remaining: Number(newCredits) });
             fetchData();
-        } catch (err) { console.error('Update credits error:', err); }
+        } catch (err) { console.error('Update credits error:', err.message); }
     };
 
     const handleUpdatePlan = async (userId, newPlan) => {
         try {
-            const supabase = await getSupabase();
-            if (!supabase) return;
-            await supabase.from('profiles').update({ plan: newPlan }).eq('id', userId);
+            await adminApi.updateUser(userId, { plan: newPlan });
             fetchData();
-        } catch (err) { console.error('Update plan error:', err); }
+        } catch (err) { console.error('Update plan error:', err.message); }
     };
 
     const filteredUsers = users.filter(u =>
@@ -340,6 +346,16 @@ const AdminDashboard = () => {
         if (sortField !== field) return null;
         return sortDir === 'desc' ? <ChevronDown className="w-3 h-3 inline ml-1" /> : <ChevronUp className="w-3 h-3 inline ml-1" />;
     };
+
+    // The admin flag arrives with the profile, so wait for it before deciding —
+    // otherwise every admin sees a flash of "Access Denied" on load.
+    if (profileLoading) {
+        return (
+            <div className="flex items-center justify-center h-screen bg-[#0a0a1a]">
+                <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+            </div>
+        );
+    }
 
     // Access denied
     if (!isAdmin(user)) {
@@ -448,18 +464,8 @@ const AdminDashboard = () => {
                 </div>
 
                 <div className="flex-1 overflow-y-auto p-6">
-                    {!isSupabaseConfigured() && (
-                        <div className="flex items-center justify-center h-[60vh]">
-                            <div className="text-center">
-                                <AlertTriangle className="w-16 h-16 text-amber-400/50 mx-auto mb-4" />
-                                <h2 className="text-2xl font-bold text-white mb-2">{tx.supabaseNotConfigured}</h2>
-                                <p className="text-zinc-500 max-w-md">{tx.addEnvVars}</p>
-                            </div>
-                        </div>
-                    )}
-
                     {/* ═══ OVERVIEW ═══ */}
-                    {isSupabaseConfigured() && activeSection === 'overview' && (
+                    {activeSection === 'overview' && (
                         <>
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
                                 <StatCard icon={Users} label={tx.totalUsers} value={stats.totalUsers} color="#818cf8" />
@@ -559,7 +565,7 @@ const AdminDashboard = () => {
                     )}
 
                     {/* ═══ USERS ═══ */}
-                    {isSupabaseConfigured() && activeSection === 'users' && (
+                    {activeSection === 'users' && (
                         <div className="rounded-xl overflow-hidden" style={{ background: 'var(--overlay-3)', border: '1px solid var(--border-color)' }}>
                             <div className="p-4 border-b border-white/5 flex items-center gap-3">
                                 <div className="relative flex-1">
@@ -603,7 +609,7 @@ const AdminDashboard = () => {
                     )}
 
                     {/* ═══ ANALYTICS ═══ */}
-                    {isSupabaseConfigured() && activeSection === 'analytics' && (
+                    {activeSection === 'analytics' && (
                         <>
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
                                 <div className="rounded-xl p-5" style={{ background: 'var(--overlay-3)', border: '1px solid var(--border-color)' }}>
@@ -754,7 +760,7 @@ const AdminDashboard = () => {
                                 </h3>
                                 <div className="space-y-2">
                                     {[
-                                        { label: 'Supabase', status: isSupabaseConfigured(), icon: Database },
+                                        { label: 'Database', status: true, icon: Database },
                                         { label: 'OpenRouter API', status: true, icon: Server },
                                         { label: 'Vercel CDN', status: true, icon: Wifi },
                                     ].map(sys => (
@@ -772,7 +778,7 @@ const AdminDashboard = () => {
                     )}
 
                     {/* ═══ ACTIVITY LOG ═══ */}
-                    {isSupabaseConfigured() && activeSection === 'activity' && (
+                    {activeSection === 'activity' && (
                         <div className="rounded-xl overflow-hidden" style={{ background: 'var(--overlay-3)', border: '1px solid var(--border-color)' }}>
                             <div className="p-4 border-b border-white/5 flex items-center gap-3">
                                 <Filter className="w-4 h-4 text-zinc-500" />

@@ -5,7 +5,6 @@ import {
 } from 'lucide-react';
 import { CharacterCard, SceneCard, CopyBtn } from './OutputCards';
 import GeneratingState from './GeneratingState';
-import { scoreScenePrompt, validateConsistency } from './QualityValidation';
 import { regenerate_scene } from '../../api/promptApi';
 
 const ResultsPanel = () => {
@@ -14,7 +13,6 @@ const ResultsPanel = () => {
     const [visionCollapsed, setVisionCollapsed] = useState(true);
     const [expandedScene, setExpandedScene] = useState(0);
     const [regeneratingScene, setRegeneratingScene] = useState(-1);
-    const [showHistory, setShowHistory] = useState(false);
     const { generatedOutput, setGeneratedOutput, isGenerating, generationProgress, t, isRTL, language, generatorInputs } = useAppContext();
     const safeT = (key, fallback = '') => { const val = t?.(key); return (val && val !== key) ? val : fallback; };
 

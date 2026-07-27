@@ -1,7 +1,56 @@
-// src/api/openrouter.js - OpenRouter API Helpers
-// DUAL MODE: Backend Proxy (production) or Direct API (development)
+// src/api/openrouter.js — Calls to our own AI endpoints.
+//
+// Everything goes through /api/generate and /api/vision on the same origin.
+// The server holds the OpenRouter key, checks the session, and charges credits;
+// the browser never sees a provider key and cannot pick its own price.
 
-import { API_KEY, API_URL, VISION_URL, VISION_MODEL, USE_BACKEND } from './config.js';
+import { API_URL, VISION_URL, VISION_MODEL } from './config.js';
+import { ApiError } from '../lib/apiClient.js';
+// The backend charges credits as part of the generation request, so the UI is
+// told to re-read the balance instead of showing a stale number until reload.
+import { notifyCreditsChanged } from '../lib/events.js';
+
+/**
+ * Thrown when the backend rejects a request for account reasons rather than
+ * technical ones, so the UI can prompt for sign-in or an upgrade instead of
+ * showing a generic failure.
+ */
+export class AccountError extends Error {
+    constructor(message, kind) {
+        super(message);
+        this.name = 'AccountError';
+        this.kind = kind; // 'auth' | 'credits'
+    }
+}
+
+/** Turn a non-OK backend response into the right error type. */
+async function toBackendError(response) {
+    const body = await response.json().catch(() => ({}));
+    const message = body.error?.message || body.error || `API error ${response.status}`;
+    const text = typeof message === 'string' ? message : JSON.stringify(message);
+
+    if (response.status === 401 || response.status === 403) {
+        return new AccountError(text, 'auth');
+    }
+    if (response.status === 402) {
+        return new AccountError(text, 'credits');
+    }
+    return new Error(text);
+}
+
+/** POST JSON to one of our endpoints, carrying the session cookie. */
+function postJson(url, payload, signal) {
+    return fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        credentials: 'same-origin',
+        signal,
+    });
+}
+
+/** Sign-in and credit problems will not fix themselves on retry. */
+const isTerminal = (error) => error instanceof AccountError || error instanceof ApiError;
 
 /**
  * Convert file to Base64
@@ -89,7 +138,7 @@ export async function handleResponse(response, returnRawText) {
     // Strategy 1: Direct Parse (Best Case)
     try {
         return JSON.parse(rawText);
-    } catch (e) {
+    } catch {
         // Continue to other strategies
     }
 
@@ -103,7 +152,7 @@ export async function handleResponse(response, returnRawText) {
     if (extracted) {
         try {
             return JSON.parse(extracted);
-        } catch (e) {
+        } catch {
             cleanText = extracted;
         }
     }
@@ -115,7 +164,6 @@ export async function handleResponse(response, returnRawText) {
                 let stack = [];
                 let isString = false;
                 let escaped = false;
-                let lastChar = '';
                 let cleaned = jsonStr.trim();
 
                 const firstBrace = cleaned.indexOf('{');
@@ -126,7 +174,6 @@ export async function handleResponse(response, returnRawText) {
 
                 for (let i = 0; i < cleaned.length; i++) {
                     const char = cleaned[i];
-                    lastChar = char;
 
                     if (escaped) {
                         escaped = false;
@@ -191,7 +238,7 @@ export async function handleResponse(response, returnRawText) {
 
         const reExtracted = extractJson(repairedJson);
         return JSON.parse(reExtracted || repairedJson);
-    } catch (e) {
+    } catch {
         // Final failure
     }
 
@@ -201,220 +248,129 @@ export async function handleResponse(response, returnRawText) {
 }
 
 /**
- * Call OpenRouter API with text prompt
- * Supports both Backend Proxy and Direct API modes
+ * Call the text generation endpoint.
+ * `action` decides the credit price — the server maps it, we only name it.
  */
-export async function callOpenRouter(userPrompt, model, returnRawText = false, maxTokens = 4000, temperature = null, systemMessage = null) {
+export async function callOpenRouter(
+    userPrompt, model, returnRawText = false, maxTokens = 4000,
+    temperature = null, systemMessage = null, action = 'generate'
+) {
     const finalTemp = temperature !== null ? temperature : (returnRawText ? 0.9 : 0.7);
     const MAX_RETRIES = 2;
     const TIMEOUT_MS = maxTokens > 15000 ? 120000 : 60000;
 
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
         try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
-
-            let response;
-
-            if (USE_BACKEND) {
-                // ===== BACKEND PROXY MODE (SAFE) =====
-                response = await fetch(API_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        prompt: userPrompt,
-                        model,
-                        maxTokens,
-                        temperature: finalTemp,
-                        ...(systemMessage ? { systemPrompt: systemMessage } : {})
-                    }),
-                    signal: controller.signal
-                });
-            } else {
-                // ===== DIRECT API MODE (DEVELOPMENT ONLY) =====
-                if (!API_KEY || API_KEY === 'your_api_key_here') {
-                    throw new Error('API Key not configured! Please add your key to .env file or start the backend server.');
-                }
-
-                response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${API_KEY}`,
-                        'HTTP-Referer': window.location.origin,
-                        'X-Title': 'Kemo Prompt Engine'
-                    },
-                    body: JSON.stringify({
-                        model,
-                        messages: [
-                            ...(systemMessage ? [{ role: 'system', content: systemMessage }] : []),
-                            { role: 'user', content: userPrompt }
-                        ],
-                        max_tokens: maxTokens,
-                        temperature: finalTemp,
-                        top_p: 0.9
-                    }),
-                    signal: controller.signal
-                });
-            }
-
-            clearTimeout(timeoutId);
+            const response = await postJson(API_URL, {
+                prompt: userPrompt,
+                model,
+                maxTokens,
+                temperature: finalTemp,
+                action,
+                ...(systemMessage ? { systemPrompt: systemMessage } : {}),
+            }, controller.signal);
 
             if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                const errorMessage = errorData.error?.message || errorData.error || `API error ${response.status}`;
-
-                if (response.status === 401 || response.status === 403) {
-                    throw new Error(`Authentication failed: ${errorMessage}`);
-                }
                 if (response.status === 429 && attempt < MAX_RETRIES) {
-                    const wait = Math.pow(2, attempt + 1) * 1000;
-                    await new Promise(r => setTimeout(r, wait));
+                    await new Promise(r => setTimeout(r, Math.pow(2, attempt + 1) * 1000));
                     continue;
                 }
-
-                throw new Error(typeof errorMessage === 'string' ? errorMessage : JSON.stringify(errorMessage));
+                throw await toBackendError(response);
             }
 
+            notifyCreditsChanged();
             return await handleResponse(response, returnRawText);
+
         } catch (error) {
             if (error.name === 'AbortError') {
-                const timeoutSec = TIMEOUT_MS / 1000;
-                throw new Error(`Request timed out (${timeoutSec}s). Try simplifying your inputs.`);
+                throw new Error(`Request timed out (${TIMEOUT_MS / 1000}s). Try simplifying your inputs.`);
             }
-            if (attempt < MAX_RETRIES && !error.message.includes('Authentication')) {
+            if (attempt < MAX_RETRIES && !isTerminal(error)) {
                 const wait = Math.pow(2, attempt + 1) * 1000;
                 console.warn(`⚠️ Retry ${attempt + 1}/${MAX_RETRIES} in ${wait / 1000}s...`);
                 await new Promise(r => setTimeout(r, wait));
                 continue;
             }
             throw error;
+        } finally {
+            clearTimeout(timeoutId);
         }
     }
 }
 
-/**
- * Call OpenRouter Vision API with image
- * Supports both Backend Proxy and Direct API modes
- */
+/** Call the vision endpoint with a single image. */
 export async function callOpenRouterVision(textPrompt, base64Image, mimeType) {
-    const TIMEOUT_MS = 90000; // 90s for vision
+    const TIMEOUT_MS = 90000;
     const MAX_RETRIES = 1;
 
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
         try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
-
-            let response;
-
-            if (USE_BACKEND) {
-                response = await fetch(VISION_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        prompt: textPrompt,
-                        model: VISION_MODEL,
-                        images: [{ url: `data:${mimeType};base64,${base64Image}` }]
-                    }),
-                    signal: controller.signal
-                });
-            } else {
-                response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${API_KEY}`,
-                        'HTTP-Referer': window.location.origin,
-                        'X-Title': 'Kemo Prompt Engine'
-                    },
-                    body: JSON.stringify({
-                        model: VISION_MODEL,
-                        messages: [{
-                            role: 'user',
-                            content: [
-                                { type: 'text', text: textPrompt },
-                                { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64Image}` } }
-                            ]
-                        }]
-                    }),
-                    signal: controller.signal
-                });
-            }
-
-            clearTimeout(timeoutId);
+            const response = await postJson(VISION_URL, {
+                prompt: textPrompt,
+                model: VISION_MODEL,
+                action: 'extract',
+                images: [{ url: `data:${mimeType};base64,${base64Image}` }],
+            }, controller.signal);
 
             if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
                 if (response.status === 429 && attempt < MAX_RETRIES) {
                     await new Promise(r => setTimeout(r, 3000));
                     continue;
                 }
-                throw new Error(errorData.error?.message || `Vision API error ${response.status}`);
+                throw await toBackendError(response);
             }
 
+            notifyCreditsChanged();
             return await handleResponse(response, false);
+
         } catch (error) {
             if (error.name === 'AbortError') {
                 throw new Error('Vision request timed out (90s). Try a smaller image.');
             }
-            if (attempt < MAX_RETRIES) {
+            if (attempt < MAX_RETRIES && !isTerminal(error)) {
                 console.warn(`⚠️ Vision retry ${attempt + 1}/${MAX_RETRIES}...`);
                 await new Promise(r => setTimeout(r, 2000));
                 continue;
             }
             throw error;
+        } finally {
+            clearTimeout(timeoutId);
         }
     }
 }
 
-/**
- * Call Gemini with multiple images
- * Supports both Backend Proxy and Direct API modes
- */
+/** Call the vision endpoint with several images at once. */
 export async function callGeminiMultiImage(textPrompt, imageContents) {
     const TIMEOUT_MS = 90000;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
     try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
+        const response = await postJson(VISION_URL, {
+            prompt: textPrompt,
+            model: VISION_MODEL,
+            action: 'extract',
+            images: imageContents.map(ic => ic.image_url || ic),
+        }, controller.signal);
 
-        let response;
+        if (!response.ok) throw await toBackendError(response);
 
-        if (USE_BACKEND) {
-            response = await fetch(VISION_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    prompt: textPrompt,
-                    model: VISION_MODEL,
-                    images: imageContents.map(ic => ic.image_url || ic)
-                }),
-                signal: controller.signal
-            });
-        } else {
-            response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${API_KEY}`,
-                    'HTTP-Referer': window.location.origin,
-                    'X-Title': 'Kemo Prompt Engine'
-                },
-                body: JSON.stringify({
-                    model: VISION_MODEL,
-                    messages: [{ role: 'user', content: [{ type: 'text', text: textPrompt }, ...imageContents] }]
-                }),
-                signal: controller.signal
-            });
-        }
-
-        clearTimeout(timeoutId);
+        notifyCreditsChanged();
         return await handleResponse(response, false);
+
     } catch (error) {
         if (error.name === 'AbortError') {
             throw new Error('Multi-image request timed out (90s).');
         }
-        console.error("Gemini Error:", error);
+        console.error('Vision error:', error);
         throw error;
+    } finally {
+        clearTimeout(timeoutId);
     }
 }

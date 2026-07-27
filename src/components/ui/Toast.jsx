@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, createContext, useContext } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, createContext, useContext } from 'react';
 import { X, CheckCircle, AlertTriangle, XCircle, Info } from 'lucide-react';
 
 // Toast Context
@@ -80,13 +80,14 @@ export const ToastProvider = ({ children }) => {
         setToasts(prev => prev.filter(t => t.id !== id));
     }, []);
 
-    // Shortcut helpers
-    const toast = useCallback({
+    // Shortcut helpers. useMemo, not useCallback — this memoises an object,
+    // and useCallback is only meant for functions.
+    const toast = useMemo(() => ({
         success: (message, title) => addToast({ type: 'success', message, title }),
         error: (message, title) => addToast({ type: 'error', message, title, duration: 6000 }),
         warning: (message, title) => addToast({ type: 'warning', message, title, duration: 5000 }),
         info: (message, title) => addToast({ type: 'info', message, title }),
-    }, [addToast]);
+    }), [addToast]);
 
     return (
         <ToastContext.Provider value={toast}>

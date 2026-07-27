@@ -1,11 +1,11 @@
 // src/components/promptarchitect/PromptArchitect.jsx
 // Prompt Architect v5.0 — Advanced Prompt Engineering Engine
-import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useAppContext } from '../../context/AppContext';
 import { engineer_universal_prompt, refine_prompt, simulate_prompt } from '../../api/promptApi';
 import { content, colorMap, iconMap } from './promptArchitectData';
-import { getTemplatesByDomain, searchTemplates, fillTemplate } from '../../api/promptTemplates';
-import { getAllStrategies, getStrategy, applyStrategy, autoDetectStrategy } from '../../api/promptStrategies';
+import { getTemplatesByDomain, searchTemplates } from '../../api/promptTemplates';
+import { getAllStrategies, autoDetectStrategy } from '../../api/promptStrategies';
 import CustomSelect from '../ui/CustomSelect';
 import HelpTooltip from '../ui/HelpTooltip';
 import {
@@ -104,7 +104,6 @@ const PromptArchitect = () => {
     // v5.0 Features
     const [previousPrompt, setPreviousPrompt] = useState('');
     const [showDiff, setShowDiff] = useState(false);
-    const [showAllStrategies, setShowAllStrategies] = useState(false);
     const [customTemplates, setCustomTemplates] = useState([]);
     const [showCustomSave, setShowCustomSave] = useState(false);
     const [customTemplateName, setCustomTemplateName] = useState('');
@@ -130,19 +129,35 @@ const PromptArchitect = () => {
 
     // Load custom templates on mount
     useEffect(() => {
-        try { setCustomTemplates(JSON.parse(localStorage.getItem('pa_custom_templates') || '[]')); } catch { }
+        try {
+            setCustomTemplates(JSON.parse(localStorage.getItem('pa_custom_templates') || '[]'));
+        } catch {
+            setCustomTemplates([]);   // corrupted entry — start clean
+        }
     }, []);
 
     // ── Keyboard Shortcuts + Escape handler for modals ──
+    // The listener is registered once; it reads the current handlers through a
+    // ref so the shortcut never fires a stale closure over old state.
+    const shortcutRef = useRef({});
+    shortcutRef.current = { task, isLoading, generatedPrompt, isRefining };
+
     useEffect(() => {
         const handler = (e) => {
-            if (e.ctrlKey && e.key === 'Enter') { e.preventDefault(); if (task.trim() && !isLoading) handleGenerate(); }
-            if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'r') { e.preventDefault(); if (generatedPrompt && !isRefining) handleRefine(); }
-            if (e.key === 'Escape') { setShowTemplates(false); }
+            const { task: currentTask, isLoading: busy, generatedPrompt: prompt, isRefining: refining } = shortcutRef.current;
+            if (e.ctrlKey && e.key === 'Enter') {
+                e.preventDefault();
+                if (currentTask.trim() && !busy) shortcutRef.current.generate?.();
+            }
+            if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'r') {
+                e.preventDefault();
+                if (prompt && !refining) shortcutRef.current.refine?.();
+            }
+            if (e.key === 'Escape') setShowTemplates(false);
         };
         window.addEventListener('keydown', handler);
         return () => window.removeEventListener('keydown', handler);
-    }, [task, isLoading, generatedPrompt, isRefining]);
+    }, []);
 
     // ── Derived ──
     const currentDomain = t.domains?.find(d => d.id === domain) || t.domains?.[0];
@@ -166,9 +181,6 @@ const PromptArchitect = () => {
 
     const { score: promptScore, tips: scoreTips } = scorePrompt(task, domainParams, constraints, factCheckMode, resolvedStrategy, rawData);
     const scoreInfo = getScoreInfo(promptScore, t);
-    const filledParams = Object.values(domainParams).filter(v => v).length;
-    const totalParams = currentFields.length;
-    const hasTask = task.trim().length > 0;
 
     // ── Handlers ──
     const handleDomainChange = (newDomain) => { setDomain(newDomain); setDomainParams({}); };
@@ -253,6 +265,10 @@ const PromptArchitect = () => {
         finally { setIsSimulating(false); }
     };
 
+    // Publish the latest handlers for the keyboard shortcuts registered above.
+    shortcutRef.current.generate = handleGenerate;
+    shortcutRef.current.refine = handleRefine;
+
     const handleUseTemplate = (tmpl) => {
         setTask(tmpl.template);
         // Also set domain if template has a domain context
@@ -306,6 +322,16 @@ const PromptArchitect = () => {
         return result;
     };
 
+    // ── Templates for current domain ──
+    // Must stay ABOVE the safety check below: a hook placed after an early
+    // return runs on some renders and not others, and React throws
+    // "Rendered fewer hooks than expected" the moment translations lag.
+    const domainTemplates = useMemo(() => {
+        if (!showTemplates) return [];
+        const tmps = templateSearch ? searchTemplates(templateSearch, lang) : getTemplatesByDomain(domain);
+        return tmps || [];
+    }, [showTemplates, domain, templateSearch, lang]);
+
     // ── Safety check ──
     if (!t || !t.domains || !Array.isArray(t.domains) || t.domains.length === 0) {
         return (
@@ -347,13 +373,6 @@ const PromptArchitect = () => {
             </div>
         );
     };
-
-    // ── Templates for current domain ──
-    const domainTemplates = useMemo(() => {
-        if (!showTemplates) return [];
-        const tmps = templateSearch ? searchTemplates(templateSearch, lang) : getTemplatesByDomain(domain);
-        return tmps || [];
-    }, [showTemplates, domain, templateSearch, lang]);
 
     // ══════════════════════════════════════
     // RENDER

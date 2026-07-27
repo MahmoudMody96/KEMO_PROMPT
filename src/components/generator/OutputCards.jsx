@@ -98,6 +98,61 @@ export const CharacterCard = ({ char, index, isRTL, language }) => {
 // ===========================
 // SCENE CARD (Accordion)
 // ===========================
+// Defined at module scope, NOT inside SceneCard. A component created during
+// render gets a new identity on every keystroke, so React unmounts and remounts
+// the textarea and the caret jumps out after each character.
+const EditBtn = ({ onEdit, language }) => (
+    <button
+        onClick={onEdit}
+        className="p-1 rounded-md hover:bg-white/10 text-zinc-500 hover:text-primary transition-colors opacity-0 group-hover/section:opacity-100"
+        title={language === 'ar' ? 'تعديل' : 'Edit'}
+    >
+        <Pencil className="w-3 h-3" />
+    </button>
+);
+
+const EditableSection = ({
+    field, value, icon: SectionIcon, iconColor, label,
+    dir = 'ltr', textClass = '',
+    isRTL, language, editing, editValue, setEditValue,
+    textareaRef, onStartEdit, onSave, onCancel,
+}) => (
+    <div className="scene-section group/section">
+        <div className={`scene-section-label ${isRTL ? 'flex-row-reverse' : ''}`}>
+            <SectionIcon className={`w-3.5 h-3.5 ${iconColor}`} />
+            <span className="flex-1">{label}</span>
+            {editing !== field && (
+                <EditBtn onEdit={() => onStartEdit(field, value)} language={language} />
+            )}
+        </div>
+        {editing === field ? (
+            <div className="mt-1">
+                <textarea
+                    ref={textareaRef}
+                    value={editValue}
+                    onChange={(e) => {
+                        setEditValue(e.target.value);
+                        e.target.style.height = 'auto';
+                        e.target.style.height = e.target.scrollHeight + 'px';
+                    }}
+                    className="w-full bg-bg0 border border-primary/40 rounded-lg p-2.5 text-sm text-text1 outline-none resize-none focus:ring-2 focus:ring-primary/25 transition-all"
+                    dir={dir}
+                />
+                <div className="flex items-center gap-1.5 mt-1.5">
+                    <button onClick={onSave} className="flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-medium bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25 transition-colors">
+                        <Check className="w-3 h-3" /> {language === 'ar' ? 'حفظ' : 'Save'}
+                    </button>
+                    <button onClick={onCancel} className="flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-medium bg-zinc-500/15 text-zinc-400 hover:bg-zinc-500/25 transition-colors">
+                        {language === 'ar' ? 'إلغاء' : 'Cancel'}
+                    </button>
+                </div>
+            </div>
+        ) : (
+            <p className={`scene-section-content ${textClass}`} dir={dir}>{value}</p>
+        )}
+    </div>
+);
+
 export const SceneCard = ({ scene, index, isRTL, language, onUpdateScene, isExpanded = true, onToggle, onRegenerateScene, isRegenerating }) => {
     const getSafeString = (val) => {
         if (!val) return '';
@@ -150,52 +205,11 @@ export const SceneCard = ({ scene, index, isRTL, language, onUpdateScene, isExpa
         setEditValue('');
     };
 
-    // Reusable edit button
-    const EditBtn = ({ field, value }) => (
-        <button
-            onClick={() => startEdit(field, value)}
-            className="p-1 rounded-md hover:bg-white/10 text-zinc-500 hover:text-primary transition-colors opacity-0 group-hover/section:opacity-100"
-            title={language === 'ar' ? 'تعديل' : 'Edit'}
-        >
-            <Pencil className="w-3 h-3" />
-        </button>
-    );
-
-    // Reusable editable section
-    const EditableSection = ({ field, value, icon: SectionIcon, iconColor, label, dir = 'ltr', textClass = '' }) => (
-        <div className="scene-section group/section">
-            <div className={`scene-section-label ${isRTL ? 'flex-row-reverse' : ''}`}>
-                <SectionIcon className={`w-3.5 h-3.5 ${iconColor}`} />
-                <span className="flex-1">{label}</span>
-                {editing !== field && <EditBtn field={field} value={value} />}
-            </div>
-            {editing === field ? (
-                <div className="mt-1">
-                    <textarea
-                        ref={textareaRef}
-                        value={editValue}
-                        onChange={(e) => {
-                            setEditValue(e.target.value);
-                            e.target.style.height = 'auto';
-                            e.target.style.height = e.target.scrollHeight + 'px';
-                        }}
-                        className="w-full bg-bg0 border border-primary/40 rounded-lg p-2.5 text-sm text-text1 outline-none resize-none focus:ring-2 focus:ring-primary/25 transition-all"
-                        dir={dir}
-                    />
-                    <div className="flex items-center gap-1.5 mt-1.5">
-                        <button onClick={saveEdit} className="flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-medium bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25 transition-colors">
-                            <Check className="w-3 h-3" /> {language === 'ar' ? 'حفظ' : 'Save'}
-                        </button>
-                        <button onClick={cancelEdit} className="flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-medium bg-zinc-500/15 text-zinc-400 hover:bg-zinc-500/25 transition-colors">
-                            {language === 'ar' ? 'إلغاء' : 'Cancel'}
-                        </button>
-                    </div>
-                </div>
-            ) : (
-                <p className={`scene-section-content ${textClass}`} dir={dir}>{value}</p>
-            )}
-        </div>
-    );
+    // Props shared by every EditableSection in this card.
+    const editProps = {
+        isRTL, language, editing, editValue, setEditValue, textareaRef,
+        onStartEdit: startEdit, onSave: saveEdit, onCancel: cancelEdit,
+    };
 
     // Summary for collapsed state
     const collapsedSummary = visual ? (visual.length > 80 ? visual.substring(0, 80) + '...' : visual) : (dialogue ? (dialogue.length > 60 ? dialogue.substring(0, 60) + '...' : dialogue) : '');
@@ -257,15 +271,15 @@ export const SceneCard = ({ scene, index, isRTL, language, onUpdateScene, isExpa
             {isExpanded && (
                 <div className="px-3 pb-3 space-y-1.5" style={{ animation: 'slideUp 0.15s ease-out' }}>
                     {visual && (
-                        <EditableSection field="visual" value={visual} icon={Film} iconColor="text-blue-400" label={language === 'ar' ? 'السيناريو البصري' : 'Visual Script'} dir="ltr" />
+                        <EditableSection {...editProps} field="visual" value={visual} icon={Film} iconColor="text-blue-400" label={language === 'ar' ? 'السيناريو البصري' : 'Visual Script'} dir="ltr" />
                     )}
 
                     {dialogue && (
-                        <EditableSection field="dialogue" value={dialogue} icon={Mic} iconColor="text-emerald-400" label={language === 'ar' ? 'الحوار' : 'Dialogue'} dir="rtl" />
+                        <EditableSection {...editProps} field="dialogue" value={dialogue} icon={Mic} iconColor="text-emerald-400" label={language === 'ar' ? 'الحوار' : 'Dialogue'} dir="rtl" />
                     )}
 
                     {audio && (
-                        <EditableSection field="audio" value={audio} icon={Volume2} iconColor="text-amber-400" label={language === 'ar' ? 'ملاحظات صوتية' : 'Audio Notes'} dir={isRTL ? 'rtl' : 'ltr'} textClass="text-zinc-500" />
+                        <EditableSection {...editProps} field="audio" value={audio} icon={Volume2} iconColor="text-amber-400" label={language === 'ar' ? 'ملاحظات صوتية' : 'Audio Notes'} dir={isRTL ? 'rtl' : 'ltr'} textClass="text-zinc-500" />
                     )}
 
                     {/* Image Prompt */}

@@ -33,6 +33,7 @@ import PromptArchitect from './components/promptarchitect/PromptArchitect';
 import SecretVault from './components/secretvault/SecretVault';
 import HomePage from './components/home/HomePage';
 import CommandPalette from './components/ui/CommandPalette';
+import { PLANS } from './services/creditsService';
 // Lazy-loaded components (must be at module scope, NOT inside render)
 const LoginPage = React.lazy(() => import('./components/auth/LoginPage'));
 const PricingPage = React.lazy(() => import('./components/pages/PricingPage'));
@@ -69,18 +70,21 @@ const HeaderLanguageToggle = () => {
 // USER PROFILE MODAL
 // ═══════════════════════════════════════
 const UserProfileModal = ({ onClose }) => {
-  const { isRTL, language } = useAppContext();
-  const { user, signOut } = useAuth();
+  const { isRTL, language, setActiveTab } = useAppContext();
+  const { user, signOut, credits, plan, profileLoading } = useAuth();
   const isAr = language === 'ar';
   const initial = (user?.display_name || user?.email || 'G')[0].toUpperCase();
   const displayName = user?.display_name || user?.email?.split('@')[0];
 
-  const usageLimits = [
-    { labelEn: 'Video Blueprints', labelAr: 'مخططات الفيديو', used: 3, max: 50, color: '#818cf8' },
-    { labelEn: 'Prompt Extractions', labelAr: 'استخراج البرومبتات', used: 1, max: 30, color: '#38bdf8' },
-    { labelEn: 'Trend Scans', labelAr: 'مسح الترندات', used: 0, max: 20, color: '#fb923c' },
-    { labelEn: 'Prompt Architect', labelAr: 'مهندس البرومبت', used: 2, max: 50, color: '#c084fc' },
-  ];
+  const planLabel = PLANS[plan]?.[isAr ? 'name_ar' : 'name'] || plan;
+  const monthlyCredits = PLANS[plan]?.credits_monthly ?? null;
+  const creditsUsed = user?.credits_used ?? 0;
+
+  // credits === null means "not loaded / unknown" — never render it as unlimited.
+  const creditsKnown = typeof credits === 'number';
+  const usagePct = creditsKnown && monthlyCredits
+    ? Math.min(100, Math.round(((monthlyCredits - credits) / monthlyCredits) * 100))
+    : 0;
 
   return (
     <>
@@ -109,37 +113,59 @@ const UserProfileModal = ({ onClose }) => {
             {/* Plan Badge */}
             <div className={`mt-3 ${isRTL ? 'text-right' : ''}`}>
               <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold border
-                ${user?.plan === 'pro'
+                ${plan !== 'free'
                   ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
                   : 'bg-zinc-800/50 text-zinc-400 border-zinc-700/50'}
               `}>
-                {user?.plan === 'pro' && <Crown className="w-3 h-3" />}
-                {user?.plan === 'pro' ? 'PRO PLAN' : (isAr ? 'باقة مجانية' : 'FREE PLAN')}
+                {plan !== 'free' && <Crown className="w-3 h-3" />}
+                {planLabel}
               </span>
             </div>
           </div>
 
-          {/* Usage Limits */}
+          {/* Credit balance */}
           <div className="p-5">
             <h4 className={`text-xs font-bold text-zinc-400 uppercase tracking-wider mb-3 ${isRTL ? 'text-right' : ''}`}>
-              {isAr ? 'حدود الاستخدام الشهرية' : 'Monthly Usage Limits'}
+              {isAr ? 'الرصيد' : 'Credits'}
             </h4>
-            <div className="space-y-3">
-              {usageLimits.map((item, i) => {
-                const pct = Math.round((item.used / item.max) * 100);
-                return (
-                  <div key={i}>
-                    <div className={`flex items-center justify-between mb-1 ${isRTL ? 'flex-row-reverse' : ''}`}>
-                      <span className="text-xs text-zinc-300">{isAr ? item.labelAr : item.labelEn}</span>
-                      <span className="text-[11px] font-mono text-zinc-500">{item.used}/{item.max}</span>
-                    </div>
-                    <div className="h-1.5 rounded-full bg-zinc-800 overflow-hidden">
-                      <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, backgroundColor: item.color }} />
-                    </div>
+
+            {profileLoading && (
+              <p className="text-xs text-zinc-500">{isAr ? 'جارِ التحميل…' : 'Loading…'}</p>
+            )}
+
+            {!profileLoading && !creditsKnown && (
+              <p className="text-xs text-zinc-500">
+                {isAr ? 'الرصيد غير متاح حالياً' : 'Balance unavailable right now'}
+              </p>
+            )}
+
+            {!profileLoading && creditsKnown && (
+              <>
+                <div className={`flex items-end justify-between mb-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
+                  <span className="text-2xl font-bold text-white tabular-nums">{credits}</span>
+                  <span className="text-[11px] text-zinc-500">
+                    {isAr ? `مستهلك: ${creditsUsed}` : `${creditsUsed} used`}
+                  </span>
+                </div>
+                {monthlyCredits ? (
+                  <div className="h-1.5 rounded-full bg-zinc-800 overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-500"
+                      style={{ width: `${usagePct}%`, backgroundColor: '#818cf8' }}
+                    />
                   </div>
-                );
-              })}
-            </div>
+                ) : null}
+              </>
+            )}
+
+            <button
+              onClick={() => { setActiveTab('pricing'); onClose(); }}
+              className="mt-4 w-full px-4 py-2 rounded-xl text-sm font-semibold
+                bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/20
+                text-indigo-300 hover:text-indigo-200 transition-all duration-200"
+            >
+              {isAr ? 'شحن الرصيد' : 'Get more credits'}
+            </button>
           </div>
 
           {/* Sign Out */}
@@ -164,7 +190,7 @@ const UserProfileModal = ({ onClose }) => {
 
 const Sidebar = ({ onNavClick }) => {
   const { activeTab, setActiveTab, t, isRTL, language, toggleLanguage } = useAppContext();
-  const { user, signOut } = useAuth();
+  const { user, plan, credits } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
   const [theme, setTheme] = useState(() => localStorage.getItem('kemo-theme') || 'dark');
   const [showUserModal, setShowUserModal] = useState(false);
@@ -271,7 +297,8 @@ const Sidebar = ({ onNavClick }) => {
             <div className={`flex-1 min-w-0 ${isRTL ? 'text-right' : 'text-left'}`}>
               <p className="text-xs font-semibold text-text1 truncate">{displayName}</p>
               <p className="text-[10px] text-muted truncate">
-                {user?.plan === 'pro' ? 'PRO' : 'FREE'}
+                {(PLANS[plan]?.name || plan).toUpperCase()}
+                {typeof credits === 'number' ? ` · ${credits}` : ''}
               </p>
             </div>
             <ChevronRight className={`w-3.5 h-3.5 text-zinc-600 group-hover:text-zinc-400 transition-colors ${isRTL ? 'rotate-180' : ''}`} />

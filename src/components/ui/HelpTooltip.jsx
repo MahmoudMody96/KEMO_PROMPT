@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { HelpCircle } from 'lucide-react';
 
 const HelpTooltip = ({ text, size = 14 }) => {
@@ -7,17 +7,15 @@ const HelpTooltip = ({ text, size = 14 }) => {
     const triggerRef = useRef(null);
     const tooltipRef = useRef(null);
 
-    useEffect(() => {
-        if (show && triggerRef.current) {
-            const rect = triggerRef.current.getBoundingClientRect();
-            // If too close to top, show below
-            if (rect.top < 80) {
-                setPosition('bottom');
-            } else {
-                setPosition('top');
-            }
-        }
-    }, [show]);
+    // Measure at the moment the tooltip opens rather than in an effect that
+    // reacts to `show` — the effect version renders once at the wrong position
+    // and then re-renders to correct it.
+    const open = () => {
+        const rect = triggerRef.current?.getBoundingClientRect();
+        setPosition(rect && rect.top < 80 ? 'bottom' : 'top');
+        setShow(true);
+    };
+    const close = () => setShow(false);
 
     if (!text) return null;
 
@@ -26,10 +24,10 @@ const HelpTooltip = ({ text, size = 14 }) => {
             <button
                 ref={triggerRef}
                 type="button"
-                onMouseEnter={() => setShow(true)}
-                onMouseLeave={() => setShow(false)}
-                onFocus={() => setShow(true)}
-                onBlur={() => setShow(false)}
+                onMouseEnter={open}
+                onMouseLeave={close}
+                onFocus={open}
+                onBlur={close}
                 className="inline-flex items-center justify-center rounded-full text-zinc-500 hover:text-zinc-300 hover:bg-white/10 transition-all duration-200 cursor-help outline-none focus:ring-1 focus:ring-white/20"
                 style={{ width: size, height: size }}
                 tabIndex={-1}

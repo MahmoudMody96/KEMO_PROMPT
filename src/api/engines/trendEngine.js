@@ -186,14 +186,13 @@ ${hookSection}
 ${langInstruction}
 ANALYZE NOW for topic: "${topic}" on ${platformData.name}`;
 
-    return callOpenRouter(systemPrompt, TEXT_MODEL, false);
+    return callOpenRouter(systemPrompt, TEXT_MODEL, false, 4000, null, null, 'trend_search');
 }
 
 // --- TREND-BASED BLUEPRINT GENERATOR ---
 
 export async function generate_from_trend(selectedTrend, topic, numScenes = 5, durationSeconds = 10, language = 'en', dnaOptions = {}) {
     const maxWordsPerScene = Math.floor(durationSeconds * 2.5);
-    const langName = language === 'ar' ? 'Arabic' : 'English';
     const langInstruction = language === 'ar'
         ? `\n*** 🌐 LANGUAGE ***\n- title, hook_line, dialogue_script: MUST be in Arabic\n- visual_script, audio_notes, universal_prompt: MUST be in English (for AI image/video generation)\n- character names: provide both name_ar and name_en\n`
         : `\n*** 🌐 LANGUAGE ***\n- All text fields MUST be in English\n- character names: provide both name_ar and name_en\n`;
@@ -289,5 +288,5 @@ ${langInstruction}
 
 GENERATE THE VIRAL BLUEPRINT NOW!`;
 
-    return callOpenRouter(systemPrompt, TEXT_MODEL, false);
+    return callOpenRouter(systemPrompt, TEXT_MODEL, false, 4000, null, null, 'generate');
 }

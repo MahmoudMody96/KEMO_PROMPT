@@ -12,7 +12,7 @@ import { Toggle, VisualSelector, FormField, TextInput, TextArea, Select } from '
 const GeneratorForm = () => {
     const {
         generatorInputs, updateGeneratorInput, setGeneratedOutput,
-        isGenerating, setIsGenerating, generationProgress, setGenerationProgress,
+        isGenerating, setIsGenerating, setGenerationProgress,
         t, isRTL, language, options: rawOptions, updateCharacter
     } = useAppContext();
     const toast = useToast();
@@ -31,7 +31,7 @@ const GeneratorForm = () => {
     const [selectedIdeaIndex, setSelectedIdeaIndex] = useState(-1);
     const [error, setError] = useState(null);
     const conceptSectionRef = useRef(null);
-    const [modalPosition, setModalPosition] = useState({ bottom: 0, left: 0, width: 0 });
+    const [, setModalPosition] = useState({ bottom: 0, left: 0, width: 0 });
 
     useEffect(() => {
         if ((isSuggesting || suggestedIdeas.length > 0) && conceptSectionRef.current) {

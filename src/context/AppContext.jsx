@@ -116,7 +116,7 @@ export const AppProvider = ({ children }) => {
     }, []);
 
     // Smart Import: Bridge Extractor -> Generator with AUTO-FILL
-    const importFromExtractor = useCallback((extractedData, source = 'image') => {
+    const importFromExtractor = useCallback((extractedData, _source = 'image') => {
         const meta = extractedData?.meta_data || {};
 
         let coreIdea = '';

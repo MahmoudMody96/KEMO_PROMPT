@@ -1,13 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import ReactDOM from 'react-dom';
-import { useAppContext } from '../../context/AppContext';
-import { useToast } from '../ui/Toast';
 import {
     Type, Users, Film, Clock, Palette, Sparkles, Loader2, Check, UserCircle,
     Mic, Languages, Wand2, Volume2, Maximize, Hash, Zap, ShieldAlert,
     Lightbulb, RefreshCw, BookOpen, Target, ChevronDown, Plus, X, Settings2
 } from 'lucide-react';
-import { generate_prompt, brainstorm_concept } from '../../api/promptApi';
 import HelpTooltip from '../ui/HelpTooltip';
 
 // ── UI Primitives ──────────────────────────────────────

@@ -7,7 +7,9 @@ import { useAuth } from '../../context/AuthContext';
 import { Shield, Mail, Lock, ArrowRight, Loader2, ShieldCheck, AlertTriangle, Globe } from 'lucide-react';
 import './AdminLoginPage.css';
 
-const ADMIN_EMAILS = (import.meta.env.VITE_ADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
+// No admin allowlist lives here on purpose. Shipping one to the browser would
+// publish the list of admin addresses while blocking nobody: authorisation is
+// decided by profiles.is_admin and enforced by RLS.
 
 const t = {
     en: {
@@ -47,11 +49,6 @@ const AdminLoginPage = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
-
-        if (!ADMIN_EMAILS.includes(email.toLowerCase())) {
-            setError(tx.accessDenied);
-            return;
-        }
 
         if (!isAuthEnabled) {
             setError(tx.authNotConfigured);

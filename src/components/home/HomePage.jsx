@@ -307,7 +307,7 @@ const tools = [
 // ═══════════════════════════════════════════════
 // GETTING STARTED
 // ═══════════════════════════════════════════════
-const GettingStarted = ({ isRTL, onNavigate }) => {
+const GettingStarted = ({ isRTL }) => {
     const steps = [
         {
             num: '01',
@@ -430,7 +430,7 @@ const StatsBar = ({ isRTL }) => {
 // MAIN HOMEPAGE
 // ═══════════════════════════════════════════════
 const HomePage = () => {
-    const { setActiveTab, language, isRTL } = useAppContext();
+    const { setActiveTab, isRTL } = useAppContext();
 
     const handleNavigate = (tabId) => {
         setActiveTab(tabId);

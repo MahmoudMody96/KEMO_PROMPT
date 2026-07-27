@@ -40,12 +40,20 @@ const CommandPalette = () => {
 
     const isAr = language === 'ar';
 
-    // Global Ctrl+K listener
+    // Global Ctrl+K listener. Opening resets the query here rather than in an
+    // effect that watches `open` — an effect would render the stale query once
+    // before clearing it.
     useEffect(() => {
         const handler = (e) => {
             if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
                 e.preventDefault();
-                setOpen(prev => !prev);
+                setOpen(prev => {
+                    if (!prev) {
+                        setQuery('');
+                        setSelectedIdx(0);
+                    }
+                    return !prev;
+                });
             }
             if (e.key === 'Escape') setOpen(false);
         };
@@ -53,14 +61,17 @@ const CommandPalette = () => {
         return () => window.removeEventListener('keydown', handler);
     }, []);
 
-    // Auto-focus input when opening
+    // Focus is a DOM side effect, so it does belong in an effect.
     useEffect(() => {
-        if (open) {
-            setQuery('');
-            setSelectedIdx(0);
-            setTimeout(() => inputRef.current?.focus(), 50);
-        }
+        if (!open) return undefined;
+        const id = setTimeout(() => inputRef.current?.focus(), 50);
+        return () => clearTimeout(id);
     }, [open]);
+
+    const handleQueryChange = (value) => {
+        setQuery(value);
+        setSelectedIdx(0);
+    };
 
     // Filter commands
     const filtered = allCommands.filter(cmd => {
@@ -69,9 +80,6 @@ const CommandPalette = () => {
         const label = labelMap[cmd.id];
         return cmd.id.includes(q) || label.en.toLowerCase().includes(q) || label.ar.includes(q);
     });
-
-    // Reset selection when filter changes
-    useEffect(() => { setSelectedIdx(0); }, [query]);
 
     const handleSelect = useCallback((id) => {
         setActiveTab(id);
@@ -112,7 +120,7 @@ const CommandPalette = () => {
                     <input
                         ref={inputRef}
                         value={query}
-                        onChange={e => setQuery(e.target.value)}
+                        onChange={e => handleQueryChange(e.target.value)}
                         onKeyDown={handleKeyDown}
                         placeholder={isAr ? 'ابحث عن أداة أو صفحة...' : 'Search tools & pages...'}
                         className="flex-1 bg-transparent text-text1 text-sm outline-none placeholder:text-muted"

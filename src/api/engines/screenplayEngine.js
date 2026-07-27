@@ -1,7 +1,7 @@
 ﻿// SCREENPLAY ENGINE - generate_prompt + generateSystemPrompt
 import { TEXT_MODEL } from '../config.js';
 import { callOpenRouter } from '../openrouter.js';
-import { getCharacterKnowledge, getAspectRatioRules } from '../knowledgeBase.js';
+import { getAspectRatioRules } from '../knowledgeBase.js';
 import { getPersona } from './personaEngine.js';
 import { getStyleDNA } from './styleDnaEngine.js';
 import { getCharacterDNA } from './characterDnaEngine.js';
@@ -40,7 +40,7 @@ export async function generate_prompt(inputs) {
   // 3. Call The LLM with proper system/user separation
   const allChars = [primaryChar, ...secondaryChars.filter(s => s)].join(' + ');
   const userMessage = `الفكرة: ${data.concept}\nالنوع: ${data.genre} | الأسلوب: ${data.style} | الشخصيات: ${allChars}\nالمشاهد: ${data.scenes} | عدد الشخصيات: ${data.characters} | المدة: ${data.duration}s\nاللهجة: ${data.dialect} | النسبة: ${data.aspectRatio}${data.notes ? '\nملاحظات: ' + data.notes : ''}${data.prohibitions ? '\nمحظورات: ' + data.prohibitions : ''}\n\nابدأ التنفيذ الآن. أخرج JSON فقط.`;
-  return callOpenRouter(userMessage, TEXT_MODEL, false, 8192, 0.6, systemPrompt);
+  return callOpenRouter(userMessage, TEXT_MODEL, false, 8192, 0.6, systemPrompt, 'generate');
 }
 
 /**
@@ -87,12 +87,11 @@ ${nextScene ? `المشهد التالي (${sceneNum + 1}): ${nextScene.visual_s
 2. المشهد لازم يكون مرتبط بالمشهد قبله وبعده
 3. JSON فقط بدون شرح`;
 
-  return callOpenRouter(contextPrompt, TEXT_MODEL, false, 2048, 0.65);
+  return callOpenRouter(contextPrompt, TEXT_MODEL, false, 2048, 0.65, null, 'generate');
 }
 
 export const generateSystemPrompt = (data) => {
   const concept = data.concept || "General Viral Video";
-  const mode = data.mode || 'script';
   const genre = data.genre || "Cinematic";
   const style = data.style || "High-End Commercial";
   const duration = data.duration || 15;

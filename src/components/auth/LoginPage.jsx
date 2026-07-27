@@ -6,7 +6,7 @@ import { useAuth } from '../../context/AuthContext';
 import { Mail, Lock, User, Chrome, ArrowRight, Loader2, UserX } from 'lucide-react';
 
 const LoginPage = () => {
-    const { signIn, signUp, signInWithGoogle, error: authError, isAuthEnabled } = useAuth();
+    const { signIn, signUp, error: authError } = useAuth();
     const [isSignUp, setIsSignUp] = useState(false);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -24,17 +24,12 @@ const LoginPage = () => {
         setSuccessMessage('');
 
         try {
-            if (!isAuthEnabled) {
-                setLocalError('⚠️ Supabase غير مُفعّل — أضف VITE_SUPABASE_URL و VITE_SUPABASE_ANON_KEY في إعدادات Vercel');
-                return;
-            }
-
             if (isSignUp) {
                 const result = await signUp(email, password, displayName);
                 if (result.error) {
                     setLocalError(result.error);
                 } else {
-                    setSuccessMessage('✅ تم إنشاء الحساب! تحقق من بريدك الإلكتروني لتفعيل الحساب.');
+                    setSuccessMessage('✅ تم إنشاء الحساب بنجاح!');
                 }
             } else {
                 const result = await signIn(email, password);
@@ -47,18 +42,10 @@ const LoginPage = () => {
         }
     };
 
-    const handleGoogleLogin = async () => {
-        setLocalError('');
-        if (!isAuthEnabled) {
-            setLocalError('⚠️ Supabase غير مُفعّل — أضف VITE_SUPABASE_URL و VITE_SUPABASE_ANON_KEY في إعدادات Vercel');
-            return;
-        }
-        setIsLoading(true);
-        const result = await signInWithGoogle();
-        if (result?.error) {
-            setLocalError(result.error);
-        }
-        setIsLoading(false);
+    // Google sign-in went away with Supabase Auth. The button stays so the
+    // layout is ready for it, but it says so plainly instead of silently failing.
+    const handleGoogleLogin = () => {
+        setLocalError('تسجيل الدخول بجوجل غير متاح حالياً — استخدم البريد وكلمة المرور');
     };
 
     return (
