@@ -30,8 +30,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **Separate vision model** (`OPENROUTER_VISION_MODEL`) so a text-only text
   model (e.g. deepseek) can't silently break the image extractor.
 - `make-admin` script to appoint the first admin from the host, never over HTTP.
-- CI workflow (`npm ci` + lint + tests + build + server syntax check) and a
-  `tests/` suite (engines, routes, template fill, consistency) — 39 tests.
+- `tests/` suite (engines, routes, template fill, consistency) — 39 tests,
+  `node --test`, no new dependencies. Run locally with `npm test`.
 
 ### Fixed
 - **WCAG-AA contrast**: 0 failures across 11 routes × 2 themes. Introduced a

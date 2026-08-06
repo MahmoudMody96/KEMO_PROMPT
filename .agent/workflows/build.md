@@ -4,8 +4,8 @@ description: How to build and verify the project
 
 ## Build & Verify
 
-Run from the project root (`D:\MAHMOUD\projects\prompt_gen`). These are the same
-steps CI runs (`.github/workflows/ci.yml`), so passing them locally means green CI.
+Run from the project root (`D:\MAHMOUD\projects\prompt_gen`). Run these before
+pushing — there is no CI, so this local pass is the only gate.
 
 1. **Lint** — frontend and server:
 ```
