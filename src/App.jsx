@@ -1,14 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { AppProvider, useAppContext } from './context/AppContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ToastProvider } from './components/ui/Toast';
-import './components/auth/LoginPage.css';
 import {
   Sparkles,
   Globe,
-  FolderOpen,
-  Settings,
-  Zap,
   ChevronRight,
   ChevronLeft,
   Flame,
@@ -23,25 +19,43 @@ import {
   Info,
   Mail,
   Briefcase,
-  User,
   X
 } from 'lucide-react';
-import GeneratorSection from './components/generator/GeneratorSection';
-import ExtractorSection from './components/extractor/ExtractorSection';
-import TrendHunter from './components/trendhunter/TrendHunter';
-import PromptArchitect from './components/promptarchitect/PromptArchitect';
-import SecretVault from './components/secretvault/SecretVault';
 import HomePage from './components/home/HomePage';
 import CommandPalette from './components/ui/CommandPalette';
 import { PLANS } from './services/creditsService';
+import { useModal } from './lib/useModal';
+import { lazyWithRetry } from './lib/lazyWithRetry';
+import { isPublicTab } from './lib/routes';
+import ErrorBoundary from './components/ErrorBoundary';
+import PublicLayout from './components/layout/PublicLayout';
+
 // Lazy-loaded components (must be at module scope, NOT inside render)
-const LoginPage = React.lazy(() => import('./components/auth/LoginPage'));
-const PricingPage = React.lazy(() => import('./components/pages/PricingPage'));
-const AboutPage = React.lazy(() => import('./components/pages/AboutPage'));
-const ServicesPage = React.lazy(() => import('./components/pages/ServicesPage'));
-const ContactPage = React.lazy(() => import('./components/pages/ContactPage'));
-const AdminDashboard = React.lazy(() => import('./components/admin/AdminDashboard'));
-const AdminLoginPage = React.lazy(() => import('./components/admin/AdminLoginPage'));
+//
+// The five tool surfaces below pull in the whole prompt-engine layer — roughly
+// 145 KB gzip of static DNA data. They used to be static imports while the
+// small marketing pages were the lazy ones, so every visitor downloaded the
+// entire engine before the login screen rendered. Lazy here means the engines
+// only load once someone actually opens a tool.
+//
+// lazyWithRetry, not React.lazy: a chunk can go missing for reasons unrelated
+// to the code — a dev server restart, or a deploy that renamed the hashed files
+// while this tab stayed open. Plain React.lazy turns that into a render throw
+// and the ErrorBoundary shows "Application Crashed", which is an alarming
+// dead end for something a single reload fixes.
+const GeneratorSection = lazyWithRetry(() => import('./components/generator/GeneratorSection'), 'GeneratorSection');
+const ExtractorSection = lazyWithRetry(() => import('./components/extractor/ExtractorSection'), 'ExtractorSection');
+const TrendHunter = lazyWithRetry(() => import('./components/trendhunter/TrendHunter'), 'TrendHunter');
+const PromptArchitect = lazyWithRetry(() => import('./components/promptarchitect/PromptArchitect'), 'PromptArchitect');
+const SecretVault = lazyWithRetry(() => import('./components/secretvault/SecretVault'), 'SecretVault');
+
+const LoginPage = lazyWithRetry(() => import('./components/auth/LoginPage'), 'LoginPage');
+const PricingPage = lazyWithRetry(() => import('./components/pages/PricingPage'), 'PricingPage');
+const AboutPage = lazyWithRetry(() => import('./components/pages/AboutPage'), 'AboutPage');
+const ServicesPage = lazyWithRetry(() => import('./components/pages/ServicesPage'), 'ServicesPage');
+const ContactPage = lazyWithRetry(() => import('./components/pages/ContactPage'), 'ContactPage');
+const AdminDashboard = lazyWithRetry(() => import('./components/admin/AdminDashboard'), 'AdminDashboard');
+const AdminLoginPage = lazyWithRetry(() => import('./components/admin/AdminLoginPage'), 'AdminLoginPage');
 
 // Compact Header Language Toggle
 const HeaderLanguageToggle = () => {
@@ -73,6 +87,8 @@ const UserProfileModal = ({ onClose }) => {
   const { isRTL, language, setActiveTab } = useAppContext();
   const { user, signOut, credits, plan, profileLoading } = useAuth();
   const isAr = language === 'ar';
+  // This modal previously could not be dismissed from the keyboard at all.
+  const dialogRef = useModal(true, onClose);
   const initial = (user?.display_name || user?.email || 'G')[0].toUpperCase();
   const displayName = user?.display_name || user?.email?.split('@')[0];
 
@@ -91,7 +107,12 @@ const UserProfileModal = ({ onClose }) => {
       <div className="fixed inset-0 z-[9998] bg-black/60 backdrop-blur-sm" onClick={onClose}
         style={{ animation: 'fadeIn 0.15s ease-out' }} />
       <div className="fixed inset-0 z-[9999] flex items-center justify-center pointer-events-none">
-        <div className="pointer-events-auto w-[420px] max-w-[92vw] rounded-2xl overflow-hidden"
+        <div
+          ref={dialogRef}
+          role="dialog"
+          aria-modal="true"
+          aria-label={isAr ? 'حسابي' : 'My account'}
+          className="pointer-events-auto w-[420px] max-w-[92vw] rounded-2xl overflow-hidden"
           style={{ animation: 'fadeIn 0.2s ease-out', background: 'var(--modal-bg)', backdropFilter: 'blur(20px)', border: '1px solid rgba(99,102,241,0.2)', boxShadow: 'var(--dropdown-shadow)' }}>
 
           {/* Header */}
@@ -103,11 +124,11 @@ const UserProfileModal = ({ onClose }) => {
                 </div>
                 <div className={isRTL ? 'text-right' : ''}>
                   <p className="text-base font-bold text-white">{displayName}</p>
-                  <p className="text-xs text-zinc-400">{user?.email}</p>
+                  <p className="text-xs text-text2">{user?.email}</p>
                 </div>
               </div>
               <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-white/5 transition-colors">
-                <X className="w-4 h-4 text-zinc-400" />
+                <X className="w-4 h-4 text-text2" />
               </button>
             </div>
             {/* Plan Badge */}
@@ -115,7 +136,7 @@ const UserProfileModal = ({ onClose }) => {
               <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold border
                 ${plan !== 'free'
                   ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
-                  : 'bg-zinc-800/50 text-zinc-400 border-zinc-700/50'}
+                  : 'bg-zinc-800/50 text-text2 border-zinc-700/50'}
               `}>
                 {plan !== 'free' && <Crown className="w-3 h-3" />}
                 {planLabel}
@@ -125,16 +146,16 @@ const UserProfileModal = ({ onClose }) => {
 
           {/* Credit balance */}
           <div className="p-5">
-            <h4 className={`text-xs font-bold text-zinc-400 uppercase tracking-wider mb-3 ${isRTL ? 'text-right' : ''}`}>
+            <h4 className={`text-xs font-bold text-text2 uppercase tracking-wider mb-3 ${isRTL ? 'text-right' : ''}`}>
               {isAr ? 'الرصيد' : 'Credits'}
             </h4>
 
             {profileLoading && (
-              <p className="text-xs text-zinc-500">{isAr ? 'جارِ التحميل…' : 'Loading…'}</p>
+              <p className="text-xs text-muted">{isAr ? 'جارِ التحميل…' : 'Loading…'}</p>
             )}
 
             {!profileLoading && !creditsKnown && (
-              <p className="text-xs text-zinc-500">
+              <p className="text-xs text-muted">
                 {isAr ? 'الرصيد غير متاح حالياً' : 'Balance unavailable right now'}
               </p>
             )}
@@ -143,7 +164,7 @@ const UserProfileModal = ({ onClose }) => {
               <>
                 <div className={`flex items-end justify-between mb-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
                   <span className="text-2xl font-bold text-white tabular-nums">{credits}</span>
-                  <span className="text-[11px] text-zinc-500">
+                  <span className="text-[11px] text-muted">
                     {isAr ? `مستهلك: ${creditsUsed}` : `${creditsUsed} used`}
                   </span>
                 </div>
@@ -189,212 +210,201 @@ const UserProfileModal = ({ onClose }) => {
 };
 
 const Sidebar = ({ onNavClick }) => {
-  const { activeTab, setActiveTab, t, isRTL, language, toggleLanguage } = useAppContext();
+  // Theme comes from AppContext now: it has to be readable by the public
+  // landing page and the login screen, neither of which mounts this component.
+  const { activeTab, setActiveTab, t, isRTL, language, toggleLanguage, theme, toggleTheme } = useAppContext();
   const { user, plan, credits } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
-  const [theme, setTheme] = useState(() => localStorage.getItem('kemo-theme') || 'dark');
   const [showUserModal, setShowUserModal] = useState(false);
 
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('kemo-theme', theme);
-  }, [theme]);
-
-  const toggleTheme = () => setTheme(prev => prev === 'dark' ? 'light' : 'dark');
-
+  // No per-item accent colour any more. Colour was being used to separate seven
+  // siblings of equal importance, which only made the rail noisy — the active
+  // state alone carries the distinction now.
   const navItems = [
-    { id: 'home', labelKey: 'home', descKey: 'homeDesc', icon: Home, color: 'violet' },
-    { id: 'generator', labelKey: 'generator', descKey: 'generatorDesc', icon: Sparkles, color: 'blue' },
-    { id: 'extractor', labelKey: 'extractor', descKey: 'extractorDesc', icon: Globe, color: 'sky' },
-    { id: 'trendhunter', labelKey: 'trendHunter', descKey: 'trendHunterDesc', icon: Flame, color: 'indigo' },
-    { id: 'promptarchitect', labelKey: 'promptArchitect', descKey: 'promptArchitectDesc', icon: Wand2, color: 'violet' },
-    { id: 'secretvault', labelKey: 'secretVault', descKey: 'secretVaultDesc', icon: Lock, color: 'amber' },
-    { id: 'pricing', labelKey: 'pricing', descKey: 'pricingDesc', icon: DollarSign, color: 'emerald' },
+    { id: 'home', labelKey: 'home', icon: Home },
+    { id: 'generator', labelKey: 'generator', icon: Sparkles },
+    { id: 'extractor', labelKey: 'extractor', icon: Globe },
+    { id: 'trendhunter', labelKey: 'trendHunter', icon: Flame },
+    { id: 'promptarchitect', labelKey: 'promptArchitect', icon: Wand2 },
+    { id: 'secretvault', labelKey: 'secretVault', icon: Lock },
   ];
 
   const initial = user ? (user.display_name || user.email || 'G')[0].toUpperCase() : 'G';
   const displayName = user?.display_name || user?.email?.split('@')[0];
+  const planLabel = (PLANS[plan]?.name || plan || '').toUpperCase();
+  const creditsKnown = typeof credits === 'number';
+  const monthlyCredits = PLANS[plan]?.credits_monthly || 20;
 
+  // h-full, not auto: the wrapper around this aside is display:block, so a
+  // block-level child sizes to its own content instead of inheriting the
+  // wrapper's height. The rail stopped at roughly 528px of a 910px viewport —
+  // the background and border simply ended partway down the screen.
   return (
     <aside
-      className={`flex flex-col transition-all duration-300 bg-bg1 border-l border-border ${collapsed ? 'w-[72px]' : 'w-60'}`}
+      className={`relative flex h-full flex-col bg-bg1 transition-[width] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${collapsed ? 'w-[76px]' : 'w-[248px]'}`}
+      style={{ borderInlineEnd: '1px solid var(--border-color)' }}
     >
-      {/* Logo */}
-      <div className={`p-4 ${isRTL ? 'text-right' : ''}`}>
-        <div className={`flex items-center gap-2.5 ${isRTL ? 'flex-row-reverse' : ''}`}>
-          <img
-            src="/logo.jpg"
-            alt="Kemo Engine"
-            className="w-9 h-9 rounded-xl object-cover shadow-sm bg-surface"
-          />
-          {!collapsed && (
-            <div className="fade-in">
-              <h1 className="font-bold text-sm text-text1">
-                <span className="text-primary font-extrabold">Kemo</span> Engine
-              </h1>
-              <p className="text-[10px] text-muted">{t('appSubtitle')}</p>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Navigation */}
-      <nav className="px-3">
+      {/* Brand */}
+      <div className="flex items-center gap-3 px-4 py-5">
+        <img
+          src="/logo.jpg"
+          alt=""
+          aria-hidden="true"
+          className="h-9 w-9 shrink-0 rounded-xl object-cover"
+          style={{ boxShadow: '0 0 0 1px var(--border-color), var(--elevation-1)' }}
+        />
         {!collapsed && (
-          <p className={`sidebar-section-label px-3 mb-2 text-[11px] font-semibold uppercase tracking-wider ${isRTL ? 'text-right' : ''}`} style={{ color: 'var(--text-muted)' }}>
-            {t('menu')}
-          </p>
-        )}
-
-        {navItems.map((item) => {
-          const isActive = activeTab === item.id;
-          return (
-            <button
-              key={item.id}
-              onClick={() => { setActiveTab(item.id); onNavClick?.(); }}
-              className={`
-                w-full flex items-center gap-2 h-10 px-3 rounded-lg mb-1 transition-all
-                ${isActive
-                  ? 'bg-active-state text-primary font-medium'
-                  : 'text-text2 hover:bg-hover-state hover:text-text1'
-                }
-                ${isRTL ? 'flex-row-reverse text-right' : ''}
-                ${collapsed ? 'justify-center px-0' : ''}
-              `}
-              title={collapsed ? t(item.labelKey) : ''}
-            >
-              <item.icon className="w-5 h-5" />
-              {!collapsed && (
-                <>
-                  <div className={`flex-1 ${isRTL ? 'text-right' : 'text-left'}`}>
-                    <p className="font-medium text-sm">{t(item.labelKey)}</p>
-                  </div>
-                  {isActive && (
-                    <ChevronRight className={`w-4 h-4 text-primary ${isRTL ? 'rotate-180' : ''}`} />
-                  )}
-                </>
-              )}
-            </button>
-          );
-        })}
-      </nav>
-
-      {/* User Profile — Middle Section */}
-      <div className="px-3 py-2">
-        <div className="sidebar-divider mb-2 border-t border-border" />
-        {user && !collapsed && (
-          <button
-            onClick={() => setShowUserModal(true)}
-            className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-lg transition-all cursor-pointer
-              hover:bg-hover-state group
-              ${isRTL ? 'flex-row-reverse' : ''}
-            `}
-            style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--overlay-border-light)' }}
-          >
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0 shadow-sm">
-              {initial}
-            </div>
-            <div className={`flex-1 min-w-0 ${isRTL ? 'text-right' : 'text-left'}`}>
-              <p className="text-xs font-semibold text-text1 truncate">{displayName}</p>
-              <p className="text-[10px] text-muted truncate">
-                {(PLANS[plan]?.name || plan).toUpperCase()}
-                {typeof credits === 'number' ? ` · ${credits}` : ''}
-              </p>
-            </div>
-            <ChevronRight className={`w-3.5 h-3.5 text-zinc-600 group-hover:text-zinc-400 transition-colors ${isRTL ? 'rotate-180' : ''}`} />
-          </button>
-        )}
-        {user && collapsed && (
-          <button
-            onClick={() => setShowUserModal(true)}
-            className="w-full flex items-center justify-center py-2 rounded-lg hover:bg-hover-state transition-all cursor-pointer"
-            title={displayName}
-          >
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white text-xs font-bold">
-              {initial}
-            </div>
-          </button>
-        )}
-        <div className="sidebar-divider mt-2 border-t border-border" />
-      </div>
-
-      {/* More Section */}
-      <nav className="px-3">
-        {!collapsed && (
-          <p className={`sidebar-section-label px-3 mb-2 text-[11px] font-semibold uppercase tracking-wider ${isRTL ? 'text-right' : ''}`} style={{ color: 'var(--text-muted)' }}>
-            {t('more')}
-          </p>
-        )}
-
-        <button className={`w-full sidebar-nav-item opacity-40 hover:opacity-70 ${isRTL ? 'flex-row-reverse' : ''} ${collapsed ? 'justify-center px-0' : ''}`}>
-          <FolderOpen className="w-5 h-5" />
-          {!collapsed && <span className="flex-1 text-sm">{t('assets')}</span>}
-        </button>
-        <button className={`w-full sidebar-nav-item opacity-40 hover:opacity-70 ${isRTL ? 'flex-row-reverse' : ''} ${collapsed ? 'justify-center px-0' : ''}`}>
-          <Settings className="w-5 h-5" />
-          {!collapsed && <span className="flex-1 text-sm">{t('settings')}</span>}
-        </button>
-      </nav>
-
-      {/* Spacer */}
-      <div className="flex-1" />
-
-      {/* Bottom section — Language, Theme, Version */}
-      <div className="p-3 border-t border-border">
-        {/* Language Toggle */}
-        {!collapsed && (
-          <button
-            onClick={toggleLanguage}
-            className={`w-full flex items-center gap-2 h-9 px-3 rounded-lg mb-2 transition-all
-              text-text2 hover:bg-hover-state hover:text-text1
-              ${isRTL ? 'flex-row-reverse' : ''}
-            `}
-          >
-            <Globe className="w-4 h-4 text-muted" />
-            <span className="flex-1 text-xs font-medium">{language === 'en' ? 'English' : 'العربية'}</span>
-          </button>
-        )}
-        {collapsed && (
-          <button
-            onClick={toggleLanguage}
-            className="w-full flex items-center justify-center h-9 rounded-lg mb-2 text-text2 hover:bg-hover-state hover:text-text1 transition-all"
-            title={language === 'en' ? 'العربية' : 'English'}
-          >
-            <Globe className="w-4 h-4" />
-          </button>
-        )}
-
-        {/* Theme + Collapse */}
-        <div className="flex items-center gap-2">
-          <button
-            onClick={toggleTheme}
-            className="theme-toggle"
-            title={theme === 'dark' ? (isRTL ? 'الوضع الفاتح' : 'Light Mode') : (isRTL ? 'الوضع الداكن' : 'Dark Mode')}
-          >
-            {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-          </button>
-          <button
-            onClick={() => setCollapsed(!collapsed)}
-            className="flex-1 sidebar-nav-item opacity-60 hover:opacity-100 justify-center"
-          >
-            {collapsed
-              ? <ChevronRight className="w-4 h-4" />
-              : <ChevronLeft className="w-4 h-4" />
-            }
-            {!collapsed && <span className="flex-1 text-xs">{isRTL ? 'تصغير' : 'Collapse'}</span>}
-          </button>
-        </div>
-
-        {!collapsed && (
-          <div className="sidebar-version flex items-center justify-center gap-2 py-2 mt-1">
-            <span className="text-[10px] font-mono" style={{ color: 'var(--text-muted)' }}>v10.0</span>
-            <span className="w-1 h-1 rounded-full" style={{ backgroundColor: 'var(--border-light)' }} />
-            <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Kemo Engine</span>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-bold leading-tight text-text1">
+              <span className="brand-text">Kemo</span> Engine
+            </p>
+            <p className="truncate text-[10px] text-muted">{t('appSubtitle')}</p>
           </div>
         )}
       </div>
 
-      {/* User Profile Modal */}
+      {/* Primary navigation */}
+      <nav className="px-3" aria-label={isRTL ? 'التنقل الرئيسي' : 'Main navigation'}>
+        {!collapsed && (
+          <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted">
+            {t('menu')}
+          </p>
+        )}
+
+        <ul className="flex flex-col gap-0.5">
+          {navItems.map((item) => {
+            const isActive = activeTab === item.id;
+            return (
+              <li key={item.id}>
+                <button
+                  aria-current={isActive ? 'page' : undefined}
+                  onClick={() => { setActiveTab(item.id); onNavClick?.(); }}
+                  title={collapsed ? t(item.labelKey) : undefined}
+                  className={`focus-ring group relative flex h-10 w-full items-center gap-3 rounded-xl text-sm transition-colors duration-200
+                    ${collapsed ? 'justify-center px-0' : 'px-3'}
+                    ${isActive ? 'font-semibold text-text1' : 'font-medium text-text2 hover:bg-hover-state hover:text-text1'}`}
+                  style={isActive ? { background: 'var(--brand-tint)' } : undefined}
+                >
+                  {/* Active rail: a 3px bar on the inline-start edge reads as
+                      "you are here" faster than a colour swap, and it flips
+                      sides automatically in RTL. */}
+                  {isActive && (
+                    <span
+                      aria-hidden="true"
+                      className="absolute top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-full"
+                      style={{
+                        insetInlineStart: 0,
+                        background: 'linear-gradient(var(--brand-1), var(--brand-3))',
+                      }}
+                    />
+                  )}
+                  <item.icon
+                    className="h-[18px] w-[18px] shrink-0 transition-transform duration-200 group-hover:scale-110"
+                    style={isActive ? { color: 'var(--brand-fg)' } : undefined}
+                    aria-hidden="true"
+                  />
+                  {!collapsed && <span className="truncate">{t(item.labelKey)}</span>}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      </nav>
+
+      <div className="flex-1" />
+
+      {/* Account + balance.
+          Credits are what users actually run out of, so the balance gets a real
+          meter instead of being buried as a number in a subtitle. */}
+      <div className="px-3 pb-3">
+        {user && (
+          <button
+            onClick={() => setShowUserModal(true)}
+            title={collapsed ? displayName : undefined}
+            className={`focus-ring w-full rounded-2xl border border-border p-3 text-start transition-colors hover:border-[var(--brand-border-strong)] ${collapsed ? 'flex justify-center' : ''}`}
+            style={{ background: 'var(--overlay-3)' }}
+          >
+            <div className={`flex items-center gap-3 ${collapsed ? '' : 'w-full'}`}>
+              <span
+                className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-xs font-bold on-brand text-white"
+                style={{ background: 'linear-gradient(135deg, var(--cta-1), var(--cta-2))' }}
+              >
+                {initial}
+              </span>
+              {!collapsed && (
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-xs font-semibold text-text1">{displayName}</span>
+                  <span className="block truncate text-[10px] text-muted">{planLabel}</span>
+                </span>
+              )}
+            </div>
+
+            {!collapsed && creditsKnown && (
+              <div className="mt-3">
+                <div className="mb-1.5 flex items-baseline justify-between">
+                  <span className="text-[10px] uppercase tracking-wide text-muted">
+                    {isRTL ? 'الرصيد' : 'Credits'}
+                  </span>
+                  <span className="text-xs font-bold tabular-nums text-text1">{credits}</span>
+                </div>
+                <div
+                  className="h-1.5 overflow-hidden rounded-full"
+                  style={{ background: 'var(--overlay-8)' }}
+                  role="progressbar"
+                  aria-valuenow={credits}
+                  aria-valuemin={0}
+                  aria-valuemax={monthlyCredits}
+                  aria-label={isRTL ? 'الرصيد المتبقي' : 'Credits remaining'}
+                >
+                  <div
+                    className="h-full rounded-full transition-[width] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]"
+                    style={{
+                      width: `${Math.min(100, Math.max(4, (credits / monthlyCredits) * 100))}%`,
+                      background: 'linear-gradient(90deg, var(--brand-1), var(--brand-3))',
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+          </button>
+        )}
+      </div>
+
+      {/* Controls */}
+      <div className="px-3 pb-4 pt-3" style={{ borderBlockStart: '1px solid var(--border-color)' }}>
+        <div className={`flex items-center gap-1.5 ${collapsed ? 'flex-col' : ''}`}>
+          <button
+            onClick={toggleLanguage}
+            title={language === 'en' ? 'العربية' : 'English'}
+            aria-label={language === 'en' ? 'Switch to Arabic' : 'Switch to English'}
+            className="focus-ring flex h-9 flex-1 items-center justify-center gap-2 rounded-lg text-text2 transition-colors hover:bg-hover-state hover:text-text1"
+          >
+            <Globe className="h-4 w-4" aria-hidden="true" />
+            {!collapsed && <span className="text-xs font-medium">{language === 'en' ? 'EN' : 'ع'}</span>}
+          </button>
+
+          <button
+            onClick={toggleTheme}
+            title={theme === 'dark' ? (isRTL ? 'الوضع الفاتح' : 'Light mode') : (isRTL ? 'الوضع الداكن' : 'Dark mode')}
+            aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            className="focus-ring grid h-9 w-9 shrink-0 place-items-center rounded-lg text-text2 transition-colors hover:bg-hover-state hover:text-text1"
+          >
+            {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          </button>
+
+          <button
+            onClick={() => setCollapsed(!collapsed)}
+            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            aria-expanded={!collapsed}
+            className="focus-ring grid h-9 w-9 shrink-0 place-items-center rounded-lg text-text2 transition-colors hover:bg-hover-state hover:text-text1"
+          >
+            {/* rtl:rotate-180 instead of a hardcoded direction check, so the
+                arrow always points the way the panel will actually move. */}
+            <ChevronLeft className={`h-4 w-4 transition-transform duration-300 rtl:rotate-180 ${collapsed ? 'rotate-180 rtl:rotate-0' : ''}`} />
+          </button>
+        </div>
+      </div>
+
       {showUserModal && <UserProfileModal onClose={() => setShowUserModal(false)} />}
     </aside>
   );
@@ -471,10 +481,10 @@ const Header = () => {
                       ${isRTL ? 'flex-row-reverse' : ''}
                     `}
                     style={{
-                      color: isActive ? '#e4e4e7' : '#71717a',
+                      color: isActive ? 'var(--text-primary)' : 'var(--text-muted)',
                     }}
-                    onMouseEnter={(e) => { e.currentTarget.style.color = '#e4e4e7'; }}
-                    onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.color = '#71717a'; }}
+                    onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text-primary)'; }}
+                    onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.color = 'var(--text-muted)'; }}
                   >
                     <LinkIcon className="w-[15px] h-[15px] opacity-70" />
                     <span>{t(link.labelKey)}</span>
@@ -523,10 +533,10 @@ const Header = () => {
                                 <ItemIcon className="w-4 h-4" style={{ color: item.color }} />
                               </div>
                               <div className={`flex-1 min-w-0 ${isRTL ? 'text-right' : 'text-left'}`}>
-                                <p className="text-[13px] font-semibold text-zinc-200 group-hover:text-white transition-colors truncate">
+                                <p className="text-[13px] font-semibold text-text1 group-hover:text-white transition-colors truncate">
                                   {isAr ? item.labelAr : item.labelEn}
                                 </p>
-                                <p className="text-[11px] text-zinc-500 group-hover:text-zinc-400 transition-colors truncate">
+                                <p className="text-[11px] text-muted group-hover:text-text2 transition-colors truncate">
                                   {isAr ? item.descAr : item.descEn}
                                 </p>
                               </div>
@@ -558,10 +568,10 @@ const Header = () => {
                   ${isRTL ? 'flex-row-reverse' : ''}
                 `}
                 style={{
-                  color: isActive ? '#e4e4e7' : '#71717a',
+                  color: isActive ? 'var(--text-primary)' : 'var(--text-muted)',
                 }}
-                onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.color = '#e4e4e7'; }}
-                onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.color = '#71717a'; }}
+                onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.color = 'var(--text-primary)'; }}
+                onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.color = 'var(--text-muted)'; }}
               >
                 <LinkIcon className="w-[15px] h-[15px] opacity-70" />
                 <span>{t(link.labelKey)}</span>
@@ -579,10 +589,38 @@ const Header = () => {
   );
 };
 
-const MainContent = ({ onMenuClick }) => {
-  const { activeTab } = useAppContext();
+// Shown for a path that matches no tab. Previously an unknown URL silently
+// rendered the homepage, so a typo was indistinguishable from /.
+const NotFoundPage = () => {
+  const { isRTL, navigate } = useAppContext();
+  return (
+    <div className="w-full max-w-xl mx-auto text-center py-20">
+      <p className="text-6xl mb-4">🧭</p>
+      <h1 className="text-2xl font-bold text-text1 mb-2">
+        {isRTL ? 'الصفحة دي مش موجودة' : 'This page does not exist'}
+      </h1>
+      <p className="text-sm text-muted mb-6">
+        {isRTL
+          ? 'يمكن الرابط اتغيّر أو فيه حرف ناقص.'
+          : 'The link may have changed, or there is a typo in it.'}
+      </p>
+      <button
+        onClick={() => navigate('home')}
+        className="px-4 py-2 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 transition-opacity"
+      >
+        {isRTL ? 'رجوع للرئيسية' : 'Back to home'}
+      </button>
+    </div>
+  );
+};
 
+const MainContent = ({ onMenuClick }) => {
+  const { activeTab, notFound } = useAppContext();
+
+  // Every branch below is lazy now, so one Suspense wraps them all rather than
+  // repeating an identical inline boundary per case.
   const renderContent = () => {
+    if (notFound) return <NotFoundPage />;
     switch (activeTab) {
       case 'home': return <HomePage />;
       case 'generator': return <GeneratorSection />;
@@ -590,10 +628,10 @@ const MainContent = ({ onMenuClick }) => {
       case 'trendhunter': return <TrendHunter />;
       case 'promptarchitect': return <PromptArchitect />;
       case 'secretvault': return <SecretVault />;
-      case 'pricing': return <React.Suspense fallback={<div className="flex items-center justify-center h-64"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>}><PricingPage /></React.Suspense>;
-      case 'about': return <React.Suspense fallback={<div className="flex items-center justify-center h-64"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>}><AboutPage /></React.Suspense>;
-      case 'services': return <React.Suspense fallback={<div className="flex items-center justify-center h-64"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>}><ServicesPage /></React.Suspense>;
-      case 'contact': return <React.Suspense fallback={<div className="flex items-center justify-center h-64"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>}><ContactPage /></React.Suspense>;
+      case 'pricing': return <PricingPage />;
+      case 'about': return <AboutPage />;
+      case 'services': return <ServicesPage />;
+      case 'contact': return <ContactPage />;
       default: return <HomePage />;
     }
   };
@@ -618,8 +656,20 @@ const MainContent = ({ onMenuClick }) => {
 
       {/* Content Area - Scrollable */}
       <div className="flex-1 overflow-y-auto overflow-x-hidden p-3 md:p-4 scroll-smooth">
+        {/* Keyed on activeTab so a crashed tab resets when you navigate away.
+            Without this inner boundary, a render error in any single tool
+            replaced the entire application — sidebar, header and all — and the
+            only recovery was a full page reload. */}
         <div key={activeTab} style={{ animation: 'pageEnter 0.3s ease-out' }}>
-          {renderContent()}
+          <ErrorBoundary key={activeTab}>
+            <React.Suspense fallback={
+              <div className="flex items-center justify-center h-64">
+                <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              </div>
+            }>
+              {renderContent()}
+            </React.Suspense>
+          </ErrorBoundary>
         </div>
       </div>
     </main>
@@ -627,8 +677,29 @@ const MainContent = ({ onMenuClick }) => {
 };
 
 const AppLayout = () => {
-  const { isRTL } = useAppContext();
+  const { isRTL, updateGeneratorInput, setActiveTab } = useAppContext();
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  // Pick up an idea typed on the public landing page before signing in.
+  //
+  // Without this the landing quietly loses what the visitor wrote the moment
+  // they hit the login form — they come back and the field is empty, which
+  // makes the whole "type your idea" entry point feel like a bait and switch.
+  // Runs once: the key is cleared immediately so a later reload does not
+  // re-navigate the user into the generator unexpectedly.
+  React.useEffect(() => {
+    let pending = null;
+    try {
+      pending = sessionStorage.getItem('kemo-pending-idea');
+      if (pending) sessionStorage.removeItem('kemo-pending-idea');
+    } catch { /* storage unavailable — nothing to restore */ }
+
+    if (pending) {
+      updateGeneratorInput('coreIdea', pending);
+      setActiveTab('generator');
+    }
+  }, [updateGeneratorInput, setActiveTab]);
+
   return (
     <div className="relative min-h-screen bg-bg0 overflow-hidden" dir={isRTL ? 'rtl' : 'ltr'}>
       <CommandPalette />
@@ -654,6 +725,7 @@ const AppLayout = () => {
 // Auth-aware root — shows login when user not logged in
 const AuthGate = () => {
   const { user, loading } = useAuth();
+  const { activeTab, theme, toggleTheme } = useAppContext();
   const isAdminRoute = window.location.pathname.toLowerCase().startsWith('/admin');
 
   // Loading state
@@ -662,7 +734,7 @@ const AuthGate = () => {
       <div className="flex items-center justify-center min-h-screen bg-bg0">
         <div className="text-center">
           <img src="/logo.jpg" alt="Kemo Engine" className="w-16 h-16 rounded-2xl mx-auto mb-4 animate-pulse" />
-          <p className="text-zinc-400">Loading...</p>
+          <p className="text-text2">Loading...</p>
         </div>
       </div>
     );
@@ -685,12 +757,37 @@ const AuthGate = () => {
     );
   }
 
-  // Normal route — no user → show login page
+  // Signed out.
+  //
+  // This used to return the login form for every route, so a first-time
+  // visitor had to create an account before seeing what the product does. Now
+  // the public routes render inside PublicLayout, and only /login shows the
+  // form. Anything that spends credits still requires an account — the tool
+  // cards on the landing page route here instead of opening.
   if (!user) {
+    if (activeTab === 'login' || !isPublicTab(activeTab)) {
+      return (
+        <React.Suspense fallback={<div className="min-h-screen bg-bg0" />}>
+          <LoginPage />
+        </React.Suspense>
+      );
+    }
     return (
-      <React.Suspense fallback={<div className="min-h-screen bg-bg0" />}>
-        <LoginPage />
-      </React.Suspense>
+      <PublicLayout theme={theme} onToggleTheme={toggleTheme}>
+        <ErrorBoundary key={activeTab}>
+          <React.Suspense fallback={
+            <div className="flex items-center justify-center py-24">
+              <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+            </div>
+          }>
+            {activeTab === 'pricing' ? <PricingPage />
+              : activeTab === 'about' ? <AboutPage />
+                : activeTab === 'services' ? <ServicesPage />
+                  : activeTab === 'contact' ? <ContactPage />
+                    : <HomePage />}
+          </React.Suspense>
+        </ErrorBoundary>
+      </PublicLayout>
     );
   }
 

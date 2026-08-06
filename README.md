@@ -1,8 +1,12 @@
 # 🎬 Kemo Prompt Engine v10.0
 **محرك توليد سيناريوهات الفيديو الذكي المدعوم بالذكاء الاصطناعي**
 
+> **ملحوظة عن الأرقام:** `v10.0` هنا هو إصدار **محرك البرومبت** (جودة التوليد).
+> إصدار **التطبيق** نفسه `2.0.0` — وده اللي بيظهر في `package.json` وفي
+> `/api/health`. الرقمين مقصودين ومختلفين.
+
 <p align="center">
-  <img src="./public/kemo-logo.png" alt="Kemo Engine Logo" width="300"/>
+  <img src="./public/logo.jpg" alt="Kemo Engine Logo" width="300"/>
 </p>
 
 <p align="center">
@@ -93,7 +97,7 @@
 ## 🛠️ التثبيت والتشغيل (Installation)
 
 ### المتطلبات
-- Node.js 20+
+- Node.js 20+ (الصورة بتستخدم 22 — شوف .nvmrc)
 - PostgreSQL 14+ (أو Docker)
 - مفتاح [OpenRouter](https://openrouter.ai/keys)
 
@@ -111,7 +115,12 @@ npm install && (cd server && npm install)
 ```
 
 #### 3. الإعدادات
-انسخ `.env.example` إلى `.env` واملأ `DATABASE_URL` و`JWT_SECRET` و`OPENROUTER_API_KEY`.
+انسخ `.env.example` إلى **`server/.env`** واملأ `DATABASE_URL` و`JWT_SECRET` و`OPENROUTER_API_KEY`.
+
+> ⚠️ لازم يكون في `server/.env` مش في جذر المشروع. `dotenv` بيقرأ من مجلد
+> التشغيل (`process.cwd()`)، والسيرفر بيتشغّل من داخل `server/` — فملف `.env`
+> في الجذر مش هيتقرأ خالص والسيرفر هيقفل فوراً بسبب `JWT_SECRET` الناقص.
+> (متغيرات `VITE_*` وحدها هي اللي بتتقرأ من الجذر وقت البناء.)
 
 > ⚠️ مفتاح OpenRouter **لا يصل للمتصفح إطلاقاً**. السيرفر هو الوحيد اللي بيستخدمه،
 > وبيتحقق من هوية المستخدم ويخصم رصيده قبل أي استدعاء.
@@ -123,14 +132,29 @@ npm run build && (cd server && npm start)
 السيرفر بيقدّم الواجهة والـ API على `http://localhost:3000` — ومشغّل الـ
 migrations بيجهّز قاعدة البيانات لوحده عند الإقلاع.
 
-للتطوير على الواجهة بإعادة تحميل فورية، شغّل `npm run dev` في نافذة تانية
-(بيشتغل على `:5173` ويحتاج proxy للـ API).
+للتطوير على الواجهة بإعادة تحميل فورية، شغّل `npm run dev` في نافذة تانية.
+بيشتغل على `:5173` وبيوجّه كل طلبات `/api` تلقائياً للسيرفر على `:3000`
+(الـ proxy متظبّط في `vite.config.js`) — فلازم السيرفر يكون شغال كمان.
 
 #### 5. أول أدمن
-بعد ما تسجّل حساب، من قاعدة البيانات:
-```sql
-UPDATE users SET is_admin = TRUE WHERE LOWER(email) = LOWER('you@example.com');
+`is_admin` مش بيتكتب من أي مسار داخل التطبيق (endpoint بيرقّي نفسه هو أول حاجة
+تتهاجم)، فأول أدمن بيتعيّن من الطرفية على السيرفر — مش عبر HTTP:
+
+```bash
+# لو الحساب موجود بالفعل (المسار المفضّل — الباسورد ما يعديش من الأمر):
+cd server && ADMIN_EMAIL=you@example.com npm run make-admin
+
+# أو لإنشاء حساب أدمن من الصفر (الباسورد من البيئة، مش من argv):
+cd server && ADMIN_EMAIL=you@example.com ADMIN_PASSWORD='…' npm run make-admin
 ```
+
+بعدها لوحة الأدمن على `/admin`. الترقية idempotent، والباسورد بتاع حساب موجود
+مابيتغيّرش أبداً — استخدم تغيير الباسورد من التطبيق نفسه.
+
+**الإعدادات وقت التشغيل:** من لوحة الأدمن (تبويب الإعدادات) تتحكم في الرصيد
+الافتراضي للتسجيل، حد الطلبات، **وضع الصيانة**، وتفعيل/إيقاف التسجيل — كلها
+مطبّقة على السيرفر (`app_settings`)، مش مجرد إخفاء في الواجهة. ولوحة "حالة النظام"
+بتفحص مزوّد الـ AI فعلياً وبتقول لو المفتاح مرفوض.
 
 ### النشر
 راجع [DEPLOY.md](./DEPLOY.md) — نشر بـ Docker على Coolify.
@@ -150,7 +174,7 @@ KEMO_PROMPT/
 │   ├── api/
 │   │   ├── openrouter.js          # نداءات /api/generate و /api/vision
 │   │   ├── promptApi.js           # واجهة موحّدة للمحركات
-│   │   └── engines/               # 13 محرك: DNA, screenplay, nexus, trends
+│   │   └── engines/               # 12 محرك: DNA, screenplay, nexus, trends
 │   ├── lib/
 │   │   ├── apiClient.js           # الباب الوحيد للباك إند
 │   │   └── events.js              # إشارة تحديث الرصيد
@@ -159,23 +183,33 @@ KEMO_PROMPT/
 │   └── services/creditsService.js # عرض الرصيد + حفظ المشاريع
 │
 └── server/                        # الـ API (Express + PostgreSQL)
-    ├── migrations/001_init.sql    # الـ schema — بيتطبّق تلقائياً عند الإقلاع
+    ├── migrations/                # بتتطبّق تلقائياً بالترتيب عند الإقلاع
+    │   ├── 001_init.sql           # الـ schema الأساسي
+    │   ├── 002_refund…​.sql        # الاسترجاع بيرجّع credits_used
+    │   ├── 003_indexes…​.sql       # فهارس مركّبة + قيود سلامة
+    │   └── 004_app_settings.sql   # إعدادات وقت التشغيل (صف واحد)
+    ├── make-admin.js              # تعيين أول أدمن من الطرفية
     └── src/
-        ├── index.js               # التطبيق: يقدّم dist/ + الـ API
+        ├── index.js               # التطبيق: يقدّم dist/ + الـ API + بوابة الصيانة
         ├── config.js              # إعدادات بتتحقق عند الإقلاع (fail-fast)
-        ├── db.js                  # pool + transaction helper
+        ├── db.js                  # pool + transaction helper (SSL للريموت بس)
         ├── auth/
         │   ├── sessions.js        # bcrypt، JWT، جلسات قابلة للإلغاء
         │   └── middleware.js      # requireAuth / requireAdmin
-        ├── lib/                   # credits, rateLimit, openrouter
+        ├── lib/                   # credits, rateLimit, openrouter, settings
         └── routes/
             ├── auth.js            # تسجيل، دخول، خروج، تغيير باسورد
             ├── ai.js              # generate + vision (خصم واسترجاع رصيد)
             ├── billing.js         # checkout + webhook
             ├── projects.js        # حفظ السيناريوهات
             ├── account.js         # الرصيد والاستخدام
-            └── admin.js           # لوحة التحكم
+            └── admin.js           # لوحة التحكم + الإعدادات + فحص المزوّد
 ```
+
+المحرّك بيضمن **ثبات الشخصيات بالبناء**: بعد ما الموديل يرجّع السيناريو،
+`src/api/engines/consistencyLock.js` بيعيد كتابة كل `scene_prompt` عشان يبدأ
+بمرجع (CREF) مبني من وصف الشخصية نفسه — فالثبات خاصية في المخرجات، مش تعليمة
+ممكن الموديل يتجاهلها. مغطّى باختبارات في `tests/` (شغّلها بـ `npm test`).
 
 ### تدفّق طلب توليد واحد
 
@@ -190,8 +224,12 @@ KEMO_PROMPT/
                                        فشل؟ ──> refundCredits + خطأ
 ```
 
-المستخدم مابيتحاسبش على استدعاء فشل، والعميل بيبعت **اسم الإجراء** بس —
-مش سعره.
+المستخدم مابيتحاسبش على استدعاء فشل، والعميل بيبعت **اسم الإجراء** بس — مش سعره.
+
+والسيرفر بيربط الإجراء بميزانية التوكنز اللي بيشتريها (`ACTION_LIMITS` في
+`routes/ai.js`)، فحد يدّعي إجراء أرخص بياخد سقف الإجراء الأرخص كمان — مش
+سيناريو كامل بسعر عصف ذهني. والموديل نفسه من قايمة سماح على السيرفر، عشان
+العميل ميقدرش يختار موديل أغلى بنفس السعر.
 
 ---
 
@@ -415,9 +453,18 @@ Genre DNA Used:
 | **Docker** | بناء ونشر بمرحلتين |
 
 ### الذكاء الاصطناعي
-- **النصوص:** Google Gemini 2.0 Flash — عبر OpenRouter
-- **الرؤية:** Google Gemini 2.0 Flash Vision
-- المفتاح موجود على السيرفر فقط ولا يصل للمتصفح
+كل النداءات بتمر عبر **OpenRouter**، فأي موديل على المنصة يشتغل. الموديل
+بيتحدد على السيرفر (`server/.env`) — الواجهة **مابتبعتش موديل خالص**:
+- **النصوص** (`/api/generate`): `OPENROUTER_MODEL` — الافتراضي `google/gemini-2.5-flash-lite`.
+- **الرؤية** (`/api/vision`): `OPENROUTER_VISION_MODEL` — **منفصل بالقصد**، لأن
+  الاستخراج محتاج موديل بيشوف صور، وكذا موديل نصّي رخيص (زي `deepseek-*`)
+  بيقبل نص بس — فتحويل موديل النصوص لواحد منهم ما يكسرش الاستخراج.
+- قايمة سماح (`OPENROUTER_ALLOWED_MODELS`) للموديلات اللي العميل مسموح يطلبها؛
+  السعر بالإجراء مش بالموديل، فأي موديل هنا لازم يكون سعره قريب من الافتراضي.
+- المفتاح موجود على السيرفر فقط ولا يصل للمتصفح.
+
+> ملاحظة: `google/gemini-2.0-flash-001` (الافتراضي القديم) بقى **مش متاح** على
+> OpenRouter ("No endpoints found") — عشان كده الافتراضي بقى `gemini-2.5-flash-lite`.
 
 ### الأمان
 - مصادقة ذاتية الاستضافة — كوكي `httpOnly` + `SameSite=Lax`
@@ -453,19 +500,19 @@ Genre DNA Used:
 ## 🎨 لقطات الشاشة (Screenshots)
 
 <p align="center">
-  <img src="./docs/screenshots/generator.png" alt="Generator Interface" width="80%"/>
+  <em>(لقطات الشاشة غير مضمّنة في المستودع)</em>
   <br/>
   <em>واجهة المولد الرئيسية - Generator v10.0</em>
 </p>
 
 <p align="center">
-  <img src="./docs/screenshots/idea-suggestion.png" alt="Idea Suggestion" width="80%"/>
+  <em>(لقطات الشاشة غير مضمّنة في المستودع)</em>
   <br/>
   <em>اقتراح الأفكار بنظام v10.0 - Multi-Stage + Morals</em>
 </p>
 
 <p align="center">
-  <img src="./docs/screenshots/trend-hunter.png" alt="Trend Hunter" width="80%"/>
+  <em>(لقطات الشاشة غير مضمّنة في المستودع)</em>
   <br/>
   <em>باحث الترندات الفيروسية</em>
 </p>
@@ -474,16 +521,19 @@ Genre DNA Used:
 
 ## 🚀 Roadmap
 
-### v10.1 (Coming Soon)
+### Shipped
+- [x] مكتبة قوالب في **Prompt Architect** (تصفّح + ملء المتغيّرات قبل الإدراج)
+- [x] لوحة أدمن كاملة: إعدادات وقت التشغيل، وضع صيانة، فحص المزوّد
+- [x] ثبات الشخصيات **بالبناء** (consistencyLock)
+- [x] دعم عربي/إنجليزي كامل عبر التطبيق
+- [x] فصل موديل النص عن موديل الرؤية
+
+### Coming Soon
 - [ ] Platform DNA Matching (TikTok vs YouTube optimization)
 - [ ] Character-First Approach
 - [ ] Viral DNA Analysis from real trends
-
-### v11.0 (Future)
 - [ ] Real-time collaboration
-- [ ] Template library
 - [ ] AI voice generation integration
-- [ ] Multi-language support (English, French, etc.)
 
 ---
 
@@ -544,10 +594,9 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND...
 
 ## 📚 Additional Resources
 
-- [Full Documentation](./docs/DOCUMENTATION.md)
-- [API Reference](./docs/API.md)
 - [Changelog](./CHANGELOG.md)
-- [Contributing Guide](./CONTRIBUTING.md)
+- [Deployment Guide](./DEPLOY.md)
+- [License](./LICENSE)
 
 ---
 
@@ -556,7 +605,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND...
   <br/>
   <em>Kemo Engine v10.0 - Your Virtual Director with Genre DNA</em>
   <br/><br/>
-  <img src="https://img.shields.io/badge/Powered_by-Google_Gemini-blue?style=flat-square&logo=google" alt="Powered by Gemini"/>
+  <img src="https://img.shields.io/badge/Powered_by-OpenRouter-6C5CFF?style=flat-square" alt="Powered by OpenRouter"/>
   <img src="https://img.shields.io/badge/Built_with-React-61DAFB?style=flat-square&logo=react" alt="Built with React"/>
   <img src="https://img.shields.io/badge/Styled_with-Tailwind-38B2AC?style=flat-square&logo=tailwind-css" alt="Styled with Tailwind"/>
 </p>

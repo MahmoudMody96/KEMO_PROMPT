@@ -18,7 +18,9 @@ router.get('/credits', (req, res) => res.json({
 // --- GET /api/account/transactions -------------------------------------
 router.get('/transactions', async (req, res) => {
     try {
-        const limit = Math.min(parseInt(req.query.limit, 10) || 20, 100);
+        // Math.max floors it: ?limit=-5 is truthy, passes Math.min unchanged and
+        // reaches Postgres as LIMIT -5, which errors out as a 500.
+        const limit = Math.max(1, Math.min(parseInt(req.query.limit, 10) || 20, 100));
         const { rows } = await query(
             `SELECT amount, balance_after, transaction_type, description, created_at
              FROM credit_transactions WHERE user_id = $1

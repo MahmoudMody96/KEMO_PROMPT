@@ -1,5 +1,4 @@
 ﻿// TREND ENGINE - search_viral_trends + generate_from_trend
-import { TEXT_MODEL } from '../config.js';
 import { callOpenRouter } from '../openrouter.js';
 import { getCharacterDNA } from './characterDnaEngine.js';
 import { getDialectDNA } from './dialectDnaEngine.js';
@@ -186,7 +185,7 @@ ${hookSection}
 ${langInstruction}
 ANALYZE NOW for topic: "${topic}" on ${platformData.name}`;
 
-    return callOpenRouter(systemPrompt, TEXT_MODEL, false, 4000, null, null, 'trend_search');
+    return callOpenRouter(systemPrompt, null, false, 4000, null, null, 'trend_search');
 }
 
 // --- TREND-BASED BLUEPRINT GENERATOR ---
@@ -208,14 +207,27 @@ export async function generate_from_trend(selectedTrend, topic, numScenes = 5, d
     if (dnaOptions.character) {
         const charDNA = getCharacterDNA(dnaOptions.character);
         if (charDNA) {
-            const charSummary = typeof charDNA === 'string' ? charDNA : (charDNA.visual_rules || charDNA.personality || JSON.stringify(charDNA).substring(0, 500));
+            // These field names must match what getCharacterDNA actually returns.
+            // The previous chain read visual_rules/personality — neither exists on
+            // the schema — so it always fell through to a raw JSON dump cut at 500
+            // characters, mid-key or mid-escape.
+            const charSummary = typeof charDNA === 'string' ? charDNA : [
+                charDNA.visualBuild,
+                charDNA.personalityTraits,
+                charDNA.dialogueStyle,
+            ].filter(Boolean).join('\n');
             dnaSection += `\n*** 🎬 CHARACTER DNA: ${dnaOptions.character} ***\n${charSummary}\nUse this character type as the main character.\n`;
         }
     }
     if (dnaOptions.dialect) {
         const dialectDNA = getDialectDNA(dnaOptions.dialect);
         if (dialectDNA) {
-            const dialectSummary = typeof dialectDNA === 'string' ? dialectDNA : (dialectDNA.rules || dialectDNA.style || JSON.stringify(dialectDNA).substring(0, 500));
+            // Likewise: rules/style do not exist on the dialect schema.
+            const dialectSummary = typeof dialectDNA === 'string' ? dialectDNA : [
+                dialectDNA.vocabularyRules,
+                Array.isArray(dialectDNA.slangWords) ? `Slang: ${dialectDNA.slangWords.join('، ')}` : dialectDNA.slangWords,
+                dialectDNA.forbidden ? `Avoid: ${dialectDNA.forbidden}` : '',
+            ].filter(Boolean).join('\n');
             dnaSection += `\n*** 🗣️ DIALECT DNA: ${dnaOptions.dialect} ***\n${dialectSummary}\nAll dialogue MUST be in this dialect.\n`;
         }
     }
@@ -288,5 +300,5 @@ ${langInstruction}
 
 GENERATE THE VIRAL BLUEPRINT NOW!`;
 
-    return callOpenRouter(systemPrompt, TEXT_MODEL, false, 4000, null, null, 'generate');
+    return callOpenRouter(systemPrompt, null, false, 4000, null, null, 'generate');
 }

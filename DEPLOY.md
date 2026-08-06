@@ -62,9 +62,14 @@ postgres://kemo:PASSWORD@<db-uuid>:5432/kemo
 | `DATABASE_URL` | الرابط الداخلي من الخطوة 1 |
 | `JWT_SECRET` | **32 حرف على الأقل** — الكود بيتحقق ويقف لو أقصر |
 | `OPENROUTER_API_KEY` | من openrouter.ai/keys |
-| `APP_URL` | رابط التطبيق، مثال `https://kemo.example.com` |
-| `NODE_ENV` | `production` |
-| `PORT` | `3000` |
+
+### مهمة بس ليها قيمة افتراضية
+
+| المتغير | الافتراضي | ليه تظبطها |
+|---|---|---|
+| `APP_URL` | — | **لازم للشراء.** من غيرها `/api/create-checkout` بيرجع 500، لأن رابط الرجوع بعد الدفع مابيتاخدش من ترويسة الطلب أبداً |
+| `NODE_ENV` | `production` | سيبها زي ما هي |
+| `PORT` | `3000` | الـ healthcheck بيقراها، فأي قيمة تانية شغالة |
 
 ولّد الـ JWT secret بـ:
 ```bash
@@ -78,7 +83,15 @@ node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
 | `SESSION_DAYS` | `7` | عمر الجلسة |
 | `RATE_LIMIT_MAX` | `30` | طلبات AI لكل نافذة |
 | `RATE_LIMIT_WINDOW` | `60000` | حجم النافذة (ms) |
-| `SIGNUP_BONUS_CREDITS` | `20` | رصيد الترحيب |
+| `SIGNUP_BONUS_CREDITS` | `20` | رصيد الترحيب (ملاحظة: الأدمن يقدر يغيّره وقت التشغيل من لوحة الإعدادات، وده بياخد الأولوية) |
+| `OPENROUTER_MODEL` | `google/gemini-2.5-flash-lite` | موديل توليد النصوص. أي id على OpenRouter. الواجهة مابتبعتش موديل — ده المصدر الوحيد |
+| `OPENROUTER_VISION_MODEL` | `google/gemini-2.5-flash-lite` | موديل استخراج الصور — **لازم يفضل موديل بيشوف صور**. منفصل عن موديل النص عشان تحويل النص لموديل نصّي بس (deepseek وغيره) ما يكسرش الاستخراج |
+| `OPENROUTER_ALLOWED_MODELS` | — | موديلات إضافية مسموح للعميل يطلبها، مفصولة بفاصلة. السعر بالإجراء مش بالموديل، فحط بس موديلات سعرها قريب من الافتراضي |
+
+> ⏱️ **ملاحظة عن السرعة:** الموديلات البطيئة على المهام التقيلة (توليد سيناريو
+> كامل ممكن ياخد 90 ثانية+) بتصطدم بمهلة السيرفر (120 ثانية). لو اخترت موديل
+> رخيص وبطيء، جرّب سرعته الأول — الموديلات السريعة (زي `gemini-2.5-flash` أو
+> `qwen/qwen3.7-flash`) بتخلّص في ثوانٍ لعشرات الثواني.
 
 ### الدفع (اختياري — الشراء بيتعطّل من غيرها)
 
@@ -87,6 +100,14 @@ node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
 
 وللواجهة (عامة، بتتحقن وقت البناء):
 `VITE_LEMON_VARIANT_BASIC` · `VITE_LEMON_VARIANT_PRO` · `VITE_LEMON_VARIANT_PREMIUM`
+
+> 🚨 **التلاتة دول لازم يتحطوا كـ Build Variables في Coolify — مش Runtime.**
+> Vite بيحقن `import.meta.env.VITE_*` جوّه الـ bundle **وقت البناء**، فلو
+> حطيتهم كمتغيرات تشغيل عادية مش هيوصلوا للصورة خالص، والنتيجة إن كل باقة في
+> صفحة الأسعار هتقول "هذه الباقة غير مُعدّة حالياً" ومحدش هيقدر يشتري.
+>
+> الـ `Dockerfile` بيستقبلهم عن طريق `ARG` في مرحلة البناء. لو الـ build عندك
+> بيعدّي `--build-arg` بنفسه، اتأكد إن الأسامي مطابقة بالظبط.
 
 ---
 
@@ -121,14 +142,23 @@ https://kemo.<server-ip>.sslip.io
 
 ## الخطوة 6: أول أدمن
 
-سجّل حساب من الموقع، وبعدين من **Coolify → kemo-db → Terminal**:
+سجّل حساب من الموقع، وبعدين من **terminal حاوية التطبيق** (Coolify → التطبيق →
+Terminal):
 
-```sql
-UPDATE users SET is_admin = TRUE WHERE LOWER(email) = LOWER('you@example.com');
+```bash
+cd server && ADMIN_EMAIL=you@example.com npm run make-admin
+```
+
+السكربت بيعيّن `is_admin = TRUE` للحساب. الترقية idempotent، والباسورد بتاع حساب
+موجود مابيتلمسش. لو لسه مافيش حساب، ممكن تنشئه بباسورد من البيئة:
+
+```bash
+cd server && ADMIN_EMAIL=you@example.com ADMIN_PASSWORD='…' npm run make-admin
 ```
 
 الأدمن عمود في قاعدة البيانات، مش متغيّر بيئة ولا قائمة إيميلات في الواجهة —
-عشان محدش يقدر يرقّي نفسه من المتصفح.
+ومفيش أي endpoint بيكتبه، عشان محدش يقدر يرقّي نفسه من المتصفح. بعد كده لوحة
+الأدمن على `/admin` (إعدادات وقت التشغيل، وضع صيانة، وفحص حالة مزوّد الـ AI).
 
 ---
 
@@ -198,9 +228,10 @@ curl -i -X POST https://kemo.example.com/api/generate -H "Content-Type: applicat
 | `JWT_SECRET must be at least 32 characters` | ولّد واحد جديد بالأمر اللي فوق |
 | `401 Sign in required` | الجلسة انتهت — سجّل دخول تاني |
 | `402 Not enough credits` | الرصيد خلص — من صفحة Pricing |
-| `502 AI service error` | مفتاح OpenRouter ملغي أو رصيده خلص |
+| `502 AI service error` | مفتاح OpenRouter ملغي، رصيده خلص، أو الموديل مش متاح (`No endpoints found`). لوحة الأدمن → حالة النظام بتقول السبب |
+| التوليد بيوصل لمهلة (timeout) | الموديل بطيء على المهمة التقيلة — استخدم موديل أسرع (شوف ملاحظة السرعة فوق) |
 | الدفع نجح والرصيد مازاد | راجع سجلات الـ webhook: توقيع غلط أو variant IDs مش مظبوطة |
-| `/admin` بيرجّع 404 | شغّل جملة `UPDATE users SET is_admin = TRUE` |
+| `/admin` بيرجّع 404 | الحساب مش أدمن — شغّل `npm run make-admin` (الخطوة 6) |
 | الشهادة مااتجددتش | البورت 80 مقفول |
 
 ### قراءة السجلات
@@ -218,4 +249,6 @@ git push
 ```
 
 Coolify بيعمل إعادة بناء ونشر. الـ migrations الجديدة بتتطبّق عند الإقلاع،
-والإيقاف نظيف (`dumb-init` بيمرّر SIGTERM) فالطلبات الجارية بتخلص الأول.
+والإيقاف نظيف: `node` هو PID 1 (الـ `CMD` بصيغة exec) وفيه معالج `SIGTERM`
+في `server/src/index.js` بيقفل السيرفر بالراحة وبيدي الطلبات الجارية 10 ثواني
+تخلص قبل الخروج. مفيش `dumb-init` — التطبيق مابيشغّلش عمليات فرعية أصلاً.

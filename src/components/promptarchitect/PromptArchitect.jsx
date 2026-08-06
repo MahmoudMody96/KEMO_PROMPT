@@ -4,10 +4,11 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useAppContext } from '../../context/AppContext';
 import { engineer_universal_prompt, refine_prompt, simulate_prompt } from '../../api/promptApi';
 import { content, colorMap, iconMap } from './promptArchitectData';
-import { getTemplatesByDomain, searchTemplates } from '../../api/promptTemplates';
+import { getTemplatesByDomain, searchTemplates, fillTemplate } from '../../api/promptTemplates';
 import { getAllStrategies, autoDetectStrategy } from '../../api/promptStrategies';
 import CustomSelect from '../ui/CustomSelect';
 import HelpTooltip from '../ui/HelpTooltip';
+import { useCopyFeedback } from '../../lib/useCopyFeedback';
 import {
     Wand2, Copy, Check, Loader2, Sparkles,
     Code, Globe, RefreshCw, Play, Shield, FileText, Zap,
@@ -55,12 +56,33 @@ const scorePrompt = (task, domainParams, constraints, factCheck, strategy, rawDa
     return { score: Math.min(score, 100), tips };
 };
 
+// Score colours come from the theme tokens rather than fixed hex: the old
+// 500-level values were picked against the dark canvas and only reached
+// 3.4:1 once the panel started following the light theme.
 const getScoreInfo = (score, t) => {
-    if (score >= 85) return { label: t?.excellent || 'Excellent', color: '#22c55e', emoji: '🔥' };
-    if (score >= 60) return { label: t?.strong || 'Strong', color: '#3b82f6', emoji: '💪' };
-    if (score >= 35) return { label: t?.medium || 'Medium', color: '#f59e0b', emoji: '⚡' };
-    return { label: t?.weak || 'Weak', color: '#ef4444', emoji: '📝' };
+    if (score >= 85) return { label: t?.excellent || 'Excellent', color: 'var(--success-fg)', emoji: '🔥' };
+    if (score >= 60) return { label: t?.strong || 'Strong', color: 'var(--chart-5)', emoji: '💪' };
+    if (score >= 35) return { label: t?.medium || 'Medium', color: 'var(--warn-fg)', emoji: '⚡' };
+    return { label: t?.weak || 'Weak', color: 'var(--danger-fg)', emoji: '📝' };
 };
+
+const HTML_ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+const escapeHtml = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => HTML_ESCAPES[c]);
+
+/**
+ * Render the inline markup the model emits (**bold**, {{placeholders}},
+ * `code`) as an HTML string.
+ *
+ * The escape pass is what makes this safe to hand to dangerouslySetInnerHTML.
+ * The generated prompt is model output, and task/rawData/constraints are
+ * user-controlled and flow into the prompt — so without escaping, a user could
+ * prompt-inject the model into echoing markup that then executes in their own
+ * authenticated session (and persists via saved templates).
+ */
+const inlineMarkup = (line) => escapeHtml(line)
+    .replace(/\*\*(.*?)\*\*/g, '<strong style="color:#e2e8f0">$1</strong>')
+    .replace(/\{\{(.*?)\}\}/g, '<code style="background:rgba(251,191,36,0.15);color:#fbbf24;padding:1px 6px;border-radius:4px;font-size:12px">{{$1}}</code>')
+    .replace(/`([^`]+)`/g, '<code style="background:rgba(139,92,246,0.1);color:#a78bfa;padding:1px 5px;border-radius:3px;font-size:12px">$1</code>');
 
 
 // ============================================
@@ -93,14 +115,23 @@ const PromptArchitect = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [isRefining, setIsRefining] = useState(false);
     const [isSimulating, setIsSimulating] = useState(false);
-    const [copied, setCopied] = useState(false);
+    const { copied, copy } = useCopyFeedback();
     const [error, setError] = useState(null);
     // Progress bar state
     const [progressStep, setProgressStep] = useState(0);
     const progressTimerRef = useRef(null);
+    // The interval is cleared in the generate handler's finally block, but that
+    // never runs if the user navigates away mid-generation — leaving a 2.2s
+    // interval calling setProgressStep on an unmounted component forever.
+    useEffect(() => () => clearInterval(progressTimerRef.current), []);
     // Modals
     const [showTemplates, setShowTemplates] = useState(false);
     const [templateSearch, setTemplateSearch] = useState('');
+    // A template picked but not yet inserted, while its {{VARIABLES}} are
+    // collected. Templates were previously pasted in raw, so the task field
+    // filled up with literal {{LANGUAGE}} / {{CODE_SNIPPET}} markers.
+    const [pendingTemplate, setPendingTemplate] = useState(null);
+    const [templateVars, setTemplateVars] = useState({});
     // v5.0 Features
     const [previousPrompt, setPreviousPrompt] = useState('');
     const [showDiff, setShowDiff] = useState(false);
@@ -153,7 +184,13 @@ const PromptArchitect = () => {
                 e.preventDefault();
                 if (prompt && !refining) shortcutRef.current.refine?.();
             }
-            if (e.key === 'Escape') setShowTemplates(false);
+            // Setters are stable, so calling them from this mount-once handler
+            // is safe; reading state here would capture the first render's copy.
+            if (e.key === 'Escape') {
+                setShowTemplates(false);
+                setPendingTemplate(null);
+                setTemplateVars({});
+            }
         };
         window.addEventListener('keydown', handler);
         return () => window.removeEventListener('keydown', handler);
@@ -164,8 +201,17 @@ const PromptArchitect = () => {
     const currentFields = t.fields?.[domain] || [];
     const domainColor = colorMap[domain] || colorMap.general;
     const DomainIcon = iconMap[domain] || Globe;
-    const strategies = getAllStrategies();
-    const resolvedStrategy = selectedStrategy === 'auto' ? autoDetectStrategy(task, domain) : selectedStrategy;
+    // getAllStrategies() returns a fresh array each call, and that array is a
+    // dependency of the strategyOptions memo below — so the memo never hit and
+    // rebuilt the whole option list on every keystroke. The strategy list is
+    // static, so compute it once.
+    const strategies = useMemo(() => getAllStrategies(), []);
+    // Pure, but was re-running on every render of a component whose task
+    // textarea updates state on each character.
+    const resolvedStrategy = useMemo(
+        () => (selectedStrategy === 'auto' ? autoDetectStrategy(task, domain) : selectedStrategy),
+        [selectedStrategy, task, domain]
+    );
 
     // Prepare strategy options for CustomSelect
     const strategyOptions = useMemo(() => [
@@ -186,11 +232,7 @@ const PromptArchitect = () => {
     const handleDomainChange = (newDomain) => { setDomain(newDomain); setDomainParams({}); };
     const handleParamChange = (key, value) => setDomainParams(prev => ({ ...prev, [key]: value }));
 
-    const handleCopy = () => {
-        navigator.clipboard.writeText(generatedPrompt);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-    };
+    const handleCopy = () => copy(generatedPrompt);
 
     const handleGenerate = async () => {
         if (!task.trim()) return;
@@ -269,14 +311,33 @@ const PromptArchitect = () => {
     shortcutRef.current.generate = handleGenerate;
     shortcutRef.current.refine = handleRefine;
 
-    const handleUseTemplate = (tmpl) => {
-        setTask(tmpl.template);
-        // Also set domain if template has a domain context
+    const applyTemplate = (tmpl, vars) => {
+        // fillTemplate also resolves the {{VAR ? '…' : ''}} conditionals, so a
+        // variable left blank drops its optional clause instead of leaking the
+        // ternary source into the prompt.
+        setTask(vars ? fillTemplate(tmpl.template, vars) : tmpl.template);
         if (tmpl.domain) {
             setDomain(tmpl.domain);
             setDomainParams({});
         }
+        setPendingTemplate(null);
+        setTemplateVars({});
         setShowTemplates(false);
+    };
+
+    const handleUseTemplate = (tmpl) => {
+        if (tmpl.variables?.length) {
+            setPendingTemplate(tmpl);
+            setTemplateVars(Object.fromEntries(tmpl.variables.map((v) => [v, ''])));
+            return;
+        }
+        applyTemplate(tmpl, null);
+    };
+
+    const closeTemplates = () => {
+        setShowTemplates(false);
+        setPendingTemplate(null);
+        setTemplateVars({});
     };
 
     // ── Export ──
@@ -336,7 +397,7 @@ const PromptArchitect = () => {
     if (!t || !t.domains || !Array.isArray(t.domains) || t.domains.length === 0) {
         return (
             <div className="flex items-center justify-center h-full text-text1">
-                <Loader2 className="w-8 h-8 animate-spin text-blue-400" />
+                <Loader2 className="w-8 h-8 animate-spin text-[var(--chart-5)]" />
             </div>
         );
     }
@@ -360,12 +421,12 @@ const PromptArchitect = () => {
                                     onChange={(e) => handleParamChange(field.key, e.target.value)}
                                     options={field.options}
                                     placeholder={t.selectOption}
-                                    className="input-base h-9 text-sm px-2 bg-white/5 border-white/10 hover:border-white/20 transition-all text-text1"
+                                    className="input-base h-9 text-sm px-2 bg-bg2 border-border hover:border-border transition-all text-text1"
                                 />
                             ) : (
                                 <input type="text" value={domainParams[field.key] || ''} onChange={(e) => handleParamChange(field.key, e.target.value)}
                                     placeholder={field.placeholder || ''}
-                                    className="input-base w-full h-9 text-sm px-2 bg-white/5 border-white/10 hover:border-white/20 transition-all text-text1 placeholder:text-text3" />
+                                    className="input-base w-full h-9 text-sm px-2 bg-bg2 border-border hover:border-border transition-all text-text1 placeholder:text-text3" />
                             )}
                         </div>
                     );
@@ -395,10 +456,10 @@ const PromptArchitect = () => {
                     {/* ── Top Section: All inputs ── */}
                     <div className="space-y-3">
                         {/* Prompt Score Bar */}
-                        <div className="flex items-center gap-2 px-3 py-2 rounded-lg transition-colors duration-300" style={{ background: `${scoreInfo.color}15`, border: `1px solid ${scoreInfo.color}30` }}>
+                        <div className="flex items-center gap-2 px-3 py-2 rounded-lg transition-colors duration-300" style={{ background: `color-mix(in srgb, ${scoreInfo.color} 9%, transparent)`, border: `1px solid color-mix(in srgb, ${scoreInfo.color} 20%, transparent)` }}>
                             <span className="text-base filter drop-shadow-sm">{scoreInfo.emoji}</span>
                             <span className="text-xs font-bold tracking-wide" style={{ color: scoreInfo.color }}>{scoreInfo.label}</span>
-                            <div className="flex-1 h-2 rounded-full bg-zinc-800/50 overflow-hidden backdrop-blur-sm">
+                            <div className="flex-1 h-2 rounded-full bg-bg2 overflow-hidden backdrop-blur-sm">
                                 <div className="h-full rounded-full transition-all duration-700 ease-out shadow-[0_0_10px_rgba(0,0,0,0.2)]" style={{ width: `${promptScore}%`, backgroundColor: scoreInfo.color }} />
                             </div>
                             <span className="text-xs font-bold" style={{ color: scoreInfo.color }}>{promptScore}%</span>
@@ -407,7 +468,7 @@ const PromptArchitect = () => {
                         {scoreTips.length > 0 && promptScore < 80 && (
                             <div className="flex flex-wrap gap-1.5">
                                 {scoreTips.slice(0, 3).map((tip, i) => (
-                                    <span key={i} className="text-[10px] px-2 py-0.5 rounded-full border border-amber-500/20 bg-amber-500/5 text-amber-400/80">
+                                    <span key={i} className="text-[10px] px-2 py-0.5 rounded-full border border-amber-500/20 bg-amber-500/5 text-[var(--warn-fg)]">
                                         💡 {isArabic ? tip.ar : tip.en}
                                     </span>
                                 ))}
@@ -462,7 +523,7 @@ const PromptArchitect = () => {
                                 {t.coreTask}
                                 {task.trim() && (
                                     <button onClick={() => { setShowCustomSave(true); setCustomTemplateName(''); }}
-                                        className="ml-auto text-xs text-emerald-500 hover:text-emerald-400 flex items-center gap-1 transition-colors px-2 py-0.5 rounded-full hover:bg-emerald-500/10">
+                                        className="ml-auto text-xs text-emerald-500 hover:text-[var(--success-fg)] flex items-center gap-1 transition-colors px-2 py-0.5 rounded-full hover:bg-emerald-500/10">
                                         <Save className="w-3.5 h-3.5" /> {isArabic ? 'حفظ كقالب' : 'Save'}
                                     </button>
                                 )}
@@ -472,6 +533,17 @@ const PromptArchitect = () => {
                                     <label className="label-text text-xs mb-1.5 opacity-80 group-focus-within:opacity-100 group-focus-within:text-primary transition-all flex items-center gap-1">
                                         {t.taskQuestion}
                                         <HelpTooltip text={isArabic ? 'صف المهمة المحددة التي تريد من الذكاء الاصطناعي تنفيذها' : 'Describe the exact task you want the AI to perform'} />
+                                        {/* The template library had no way in: the modal existed and
+                                            `setShowTemplates(true)` was never called from anywhere. */}
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowTemplates(true)}
+                                            className="focus-ring ms-auto inline-flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-medium transition-colors"
+                                            style={{ background: 'var(--brand-tint)', color: 'var(--brand-fg)', border: '1px solid var(--brand-border)' }}
+                                        >
+                                            <BookOpen className="h-3 w-3" aria-hidden="true" />
+                                            {t.browseTemplates}
+                                        </button>
                                     </label>
                                     <textarea ref={taskRef} value={task} onChange={(e) => setTask(e.target.value)} placeholder={t.placeholders.task}
                                         className="input-base w-full h-28 resize-none text-sm p-3 leading-relaxed focus:ring-2 ring-primary/20 transition-all" />
@@ -490,10 +562,10 @@ const PromptArchitect = () => {
                                 <div className="flex gap-2 animate-in fade-in slide-in-from-top-1 duration-200">
                                     <input type="text" value={customTemplateName} onChange={(e) => setCustomTemplateName(e.target.value)}
                                         placeholder={isArabic ? 'اسم القالب...' : 'Template name...'} className="input-base input-sm flex-1" />
-                                    <button onClick={handleSaveCustomTemplate} className="px-2 py-1 rounded-lg text-xs bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/25 transition-colors">
+                                    <button onClick={handleSaveCustomTemplate} className="px-2 py-1 rounded-lg text-xs bg-emerald-500/15 text-[var(--success-fg)] border border-emerald-500/30 hover:bg-emerald-500/25 transition-colors">
                                         <Check className="w-3 h-3" />
                                     </button>
-                                    <button onClick={() => setShowCustomSave(false)} className="px-2 py-1 rounded-lg text-xs bg-zinc-800 text-zinc-400 border border-white/5 hover:bg-zinc-700 transition-colors">
+                                    <button onClick={() => setShowCustomSave(false)} className="px-2 py-1 rounded-lg text-xs bg-bg1 text-text2 border border-border hover:bg-bg2 transition-colors">
                                         <X className="w-3 h-3" />
                                     </button>
                                 </div>
@@ -502,9 +574,9 @@ const PromptArchitect = () => {
                             {customTemplates.length > 0 && (
                                 <div className="flex gap-1.5 flex-wrap">
                                     {customTemplates.slice(0, 5).map((ct) => (
-                                        <div key={ct.id} className="flex items-center gap-1 px-2 py-1 rounded-md bg-emerald-500/5 border border-emerald-500/15 text-[10px] text-emerald-400 group hover:border-emerald-500/30 transition-all cursor-pointer">
-                                            <button onClick={() => setTask(ct.template)} className="hover:text-emerald-300 font-medium">{ct.title}</button>
-                                            <button onClick={() => handleDeleteCustomTemplate(ct.id)} className="opacity-0 group-hover:opacity-100 transition-opacity text-red-400 hover:text-red-300 ml-1">
+                                        <div key={ct.id} className="flex items-center gap-1 px-2 py-1 rounded-md bg-emerald-500/5 border border-emerald-500/15 text-[10px] text-[var(--success-fg)] group hover:border-emerald-500/30 transition-all cursor-pointer">
+                                            <button onClick={() => setTask(ct.template)} className="hover:text-[var(--success-fg)] font-medium">{ct.title}</button>
+                                            <button onClick={() => handleDeleteCustomTemplate(ct.id)} className="opacity-0 group-hover:opacity-100 transition-opacity text-[var(--danger-fg)] hover:text-[var(--danger-fg)] ml-1">
                                                 <X className="w-2.5 h-2.5" />
                                             </button>
                                         </div>
@@ -528,25 +600,25 @@ const PromptArchitect = () => {
                                 </div>
                             </div>
                             <button onClick={() => setFactCheckMode(!factCheckMode)}
-                                className={`flex items-center gap-1.5 text-sm cursor-pointer shrink-0 px-3 py-2 rounded-lg border transition-all ${factCheckMode ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-transparent border-transparent text-text-muted hover:bg-bg-hover'}`}>
+                                className={`flex items-center gap-1.5 text-sm cursor-pointer shrink-0 px-3 py-2 rounded-lg border transition-all ${factCheckMode ? 'bg-emerald-500/10 border-emerald-500/20 text-[var(--success-fg)]' : 'bg-transparent border-transparent text-text-muted hover:bg-bg-hover'}`}>
                                 {factCheckMode ? <ToggleRight className="w-5 h-5" /> : <ToggleLeft className="w-5 h-5" />}
                                 <span>{t.factCheck}</span>
                             </button>
                         </div>
                         <button onClick={handleGenerate} disabled={isLoading || !task.trim()}
-                            className="btn h-12 rounded-xl text-white text-base font-bold tracking-wide flex items-center justify-center gap-2.5 w-full shadow-lg hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 relative overflow-hidden group"
+                            className="btn h-12 rounded-xl on-brand text-white text-base font-bold tracking-wide flex items-center justify-center gap-2.5 w-full shadow-lg hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 relative overflow-hidden group"
                             style={{
-                                background: `linear-gradient(135deg, ${domainColor.text}, ${domainColor.text}dd)`,
+                                background: 'linear-gradient(135deg, var(--cta-1), var(--cta-2))',
                                 boxShadow: `0 8px 20px -6px ${domainColor.text}66`
                             }}>
-                            <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 blur-md pointer-events-none" />
+                            <div className="absolute inset-0 bg-bg2 translate-y-full group-hover:translate-y-0 transition-transform duration-300 blur-md pointer-events-none" />
                             {isLoading ? (
                                 <><Loader2 className="w-5 h-5 animate-spin" /><span>{progressPhases[progressStep]?.label || t.compiling}</span></>
                             ) : (
                                 <><Wand2 className="w-5 h-5 group-hover:rotate-12 transition-transform duration-300" /><span>{t.compile}</span></>
                             )}
                         </button>
-                        {error && <div className="p-2.5 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-sm">{error}</div>}
+                        {error && <div className="p-2.5 rounded-lg bg-red-500/10 border border-red-500/30 text-[var(--danger-fg)] text-sm">{error}</div>}
                     </div>
                 </div>
             </div>
@@ -561,30 +633,30 @@ const PromptArchitect = () => {
                             </div>
                             <div style={{ textAlign: isArabic ? 'right' : 'left' }}>
                                 <h3 className="font-bold text-text1">{t.masterPrompt}</h3>
-                                <p className="text-xs text-zinc-500">{currentDomain.emoji} {currentDomain.label.replace(currentDomain.emoji, '').trim()}</p>
+                                <p className="text-xs text-muted">{currentDomain.emoji} {currentDomain.label.replace(currentDomain.emoji, '').trim()}</p>
                             </div>
                         </div>
                         {generatedPrompt && (
                             <div className="flex gap-2">
                                 <button onClick={handleCopy} className="btn btn-secondary text-xs px-3 py-1.5">
-                                    {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                                    {copied ? <Check className="w-3.5 h-3.5 text-[var(--success-fg)]" /> : <Copy className="w-3.5 h-3.5" />}
                                     <span>{copied ? t.copied : t.copy}</span>
                                 </button>
                                 <button onClick={handleRefine} disabled={isRefining}
                                     className="btn btn-secondary text-xs px-3 py-1.5"
                                     style={{ background: 'rgba(168,85,247,0.1)', borderColor: 'rgba(168,85,247,0.3)' }}>
-                                    {isRefining ? <Loader2 className="w-3.5 h-3.5 animate-spin text-purple-400" /> : <RefreshCw className="w-3.5 h-3.5 text-purple-400" />}
-                                    <span className="text-purple-400">{t.refine}</span>
+                                    {isRefining ? <Loader2 className="w-3.5 h-3.5 animate-spin text-[var(--brand-fg)]" /> : <RefreshCw className="w-3.5 h-3.5 text-[var(--brand-fg)]" />}
+                                    <span className="text-[var(--brand-fg)]">{t.refine}</span>
                                 </button>
                                 <button onClick={handleSimulate} disabled={isSimulating}
                                     className="btn btn-secondary text-xs px-3 py-1.5"
                                     style={{ background: 'rgba(59,130,246,0.1)', borderColor: 'rgba(59,130,246,0.3)' }}>
-                                    {isSimulating ? <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-400" /> : <Play className="w-3.5 h-3.5 text-blue-400" />}
-                                    <span className="text-blue-400">{t.test}</span>
+                                    {isSimulating ? <Loader2 className="w-3.5 h-3.5 animate-spin text-[var(--chart-5)]" /> : <Play className="w-3.5 h-3.5 text-[var(--chart-5)]" />}
+                                    <span className="text-[var(--chart-5)]">{t.test}</span>
                                 </button>
                                 {/* Export */}
                                 <button onClick={() => handleExport('md')} className="btn btn-secondary text-xs px-2 py-1.5" title="Export as .md">
-                                    <Download className="w-3.5 h-3.5 text-emerald-400" />
+                                    <Download className="w-3.5 h-3.5 text-[var(--success-fg)]" />
                                 </button>
                             </div>
                         )}
@@ -593,12 +665,12 @@ const PromptArchitect = () => {
                     {generatedPrompt && (
                         <div className="flex gap-2 px-4 -mt-2">
                             <button onClick={() => setAbMode(!abMode)}
-                                className={`text-[10px] px-2 py-0.5 rounded border transition-all ${abMode ? 'bg-orange-500/15 border-orange-500/30 text-orange-400' : 'border-white/5 text-zinc-500 hover:border-white/15'}`}>
+                                className={`text-[10px] px-2 py-0.5 rounded border transition-all ${abMode ? 'bg-orange-500/15 border-orange-500/30 text-[var(--warn-fg)]' : 'border-border text-muted hover:border-border'}`}>
                                 {isArabic ? 'مقارنة A/B' : 'A/B Test'}
                             </button>
                             {previousPrompt && (
                                 <button onClick={() => setShowDiff(!showDiff)}
-                                    className={`text-[10px] px-2 py-0.5 rounded border transition-all ${showDiff ? 'bg-cyan-500/15 border-cyan-500/30 text-cyan-400' : 'border-white/5 text-zinc-500 hover:border-white/15'}`}>
+                                    className={`text-[10px] px-2 py-0.5 rounded border transition-all ${showDiff ? 'bg-cyan-500/15 border-cyan-500/30 text-[var(--chart-3)]' : 'border-border text-muted hover:border-border'}`}>
                                     <GitCompare className="w-3 h-3 inline mr-1" /> {isArabic ? 'الفرق' : 'Diff'}
                                 </button>
                             )}
@@ -609,7 +681,7 @@ const PromptArchitect = () => {
                 <div className="card-body flex-1 flex flex-col gap-4">
                     <div className="code-block flex-1">
                         <div className="code-block-header">
-                            <span className="text-xs text-zinc-500 font-mono">
+                            <span className="text-xs text-muted font-mono">
                                 ARCHITECT v5.0 • {domain.toUpperCase()} • {resolvedStrategy.toUpperCase().replace(/_/g, '_')} • {/[\u0600-\u06FF]/.test(task) ? 'AR' : 'EN'}
                             </span>
                             {Object.keys(domainParams).length > 0 && (
@@ -623,8 +695,8 @@ const PromptArchitect = () => {
                             {showDiff && previousPrompt ? (
                                 <div className="text-xs font-mono space-y-0">
                                     {computeDiff(previousPrompt, generatedPrompt).map((line, i) => (
-                                        <div key={i} className={`px-2 py-0.5 ${line.type === 'added' ? 'bg-emerald-500/10 text-emerald-300 border-l-2 border-emerald-500' : line.type === 'removed' ? 'bg-red-500/10 text-red-300 border-l-2 border-red-500 line-through opacity-60' : 'text-zinc-400'}`}>
-                                            <span className="text-zinc-600 mr-2">{line.type === 'added' ? '+' : line.type === 'removed' ? '-' : ' '}</span>
+                                        <div key={i} className={`px-2 py-0.5 ${line.type === 'added' ? 'bg-emerald-500/10 text-[var(--success-fg)] border-l-2 border-emerald-500' : line.type === 'removed' ? 'bg-red-500/10 text-[var(--danger-fg)] border-l-2 border-red-500 line-through opacity-60' : 'text-text2'}`}>
+                                            <span className="text-muted mr-2">{line.type === 'added' ? '+' : line.type === 'removed' ? '-' : ' '}</span>
                                             {line.text}
                                         </div>
                                     ))}
@@ -633,7 +705,7 @@ const PromptArchitect = () => {
                                 /* ── Progress Bar ── */
                                 <div className="flex flex-col items-center justify-center h-full py-16 px-6 gap-6" dir={textDir}>
                                     <div className="relative w-20 h-20">
-                                        <div className="absolute inset-0 rounded-full border-4 border-zinc-800" />
+                                        <div className="absolute inset-0 rounded-full border-4 border-border" />
                                         <svg className="absolute inset-0 w-20 h-20 -rotate-90" viewBox="0 0 80 80">
                                             <circle cx="40" cy="40" r="36" fill="none" stroke={domainColor.text} strokeWidth="4" strokeLinecap="round"
                                                 strokeDasharray={`${(progressPhases[progressStep]?.pct || 10) * 2.26} 226`}
@@ -644,8 +716,8 @@ const PromptArchitect = () => {
                                         </div>
                                     </div>
                                     <div className="text-center space-y-2 w-full max-w-xs">
-                                        <p className="text-sm font-medium text-zinc-300">{progressPhases[progressStep]?.label}</p>
-                                        <div className="w-full h-1.5 rounded-full bg-zinc-800 overflow-hidden">
+                                        <p className="text-sm font-medium text-text2">{progressPhases[progressStep]?.label}</p>
+                                        <div className="w-full h-1.5 rounded-full bg-bg1 overflow-hidden">
                                             <div className="h-full rounded-full transition-all duration-1000 ease-out" style={{
                                                 width: `${progressPhases[progressStep]?.pct || 10}%`,
                                                 background: `linear-gradient(90deg, ${domainColor.text}, ${domainColor.text}aa)`
@@ -665,14 +737,14 @@ const PromptArchitect = () => {
                                     {generatedPrompt.split('\n').map((line, i) => {
                                         // H1 headers
                                         if (/^#\s+/.test(line)) return (
-                                            <h2 key={i} className="text-base font-bold mt-4 mb-1 pb-1 border-b border-white/5 flex items-center gap-2" style={{ color: domainColor.text }}>
+                                            <h2 key={i} className="text-base font-bold mt-4 mb-1 pb-1 border-b border-border flex items-center gap-2" style={{ color: domainColor.text }}>
                                                 <span className="w-1 h-5 rounded-full" style={{ backgroundColor: domainColor.text }} />
                                                 {line.replace(/^#+\s*/, '')}
                                             </h2>
                                         );
                                         // H2/H3 subheaders
                                         if (/^#{2,3}\s+/.test(line)) return (
-                                            <h3 key={i} className="text-sm font-semibold mt-3 mb-0.5 text-purple-300">
+                                            <h3 key={i} className="text-sm font-semibold mt-3 mb-0.5 text-[var(--brand-fg)]">
                                                 {line.replace(/^#+\s*/, '')}
                                             </h3>
                                         );
@@ -680,46 +752,33 @@ const PromptArchitect = () => {
                                         if (/^\d+\.\s/.test(line)) {
                                             const parts = line.match(/^(\d+\.)\s(.*)/);
                                             return (
-                                                <div key={i} className="flex gap-2 py-0.5 text-[13px] leading-relaxed text-zinc-300">
+                                                <div key={i} className="flex gap-2 py-0.5 text-[13px] leading-relaxed text-text2">
                                                     <span className="font-bold shrink-0" style={{ color: domainColor.text }}>{parts?.[1]}</span>
-                                                    <span dangerouslySetInnerHTML={{
-                                                        __html: (parts?.[2] || line)
-                                                            .replace(/\*\*(.*?)\*\*/g, '<strong style="color:#e2e8f0">$1</strong>')
-                                                            .replace(/\{\{(.*?)\}\}/g, '<code style="background:rgba(251,191,36,0.15);color:#fbbf24;padding:1px 6px;border-radius:4px;font-size:12px">{{$1}}</code>')
-                                                    }} />
+                                                    <span dangerouslySetInnerHTML={{ __html: inlineMarkup(parts?.[2] || line) }} />
                                                 </div>
                                             );
                                         }
                                         // Bullet points
                                         if (/^[-•✓✅]\s/.test(line)) return (
-                                            <div key={i} className="flex gap-2 py-0.5 text-[13px] leading-relaxed text-zinc-300 pl-1">
+                                            <div key={i} className="flex gap-2 py-0.5 text-[13px] leading-relaxed text-text2 pl-1">
                                                 <span className="shrink-0 mt-0.5" style={{ color: /^[✓✅]/.test(line) ? '#34d399' : '#67e8f9' }}>•</span>
-                                                <span dangerouslySetInnerHTML={{
-                                                    __html: line.replace(/^[-•✓✅]\s*/, '')
-                                                        .replace(/\*\*(.*?)\*\*/g, '<strong style="color:#e2e8f0">$1</strong>')
-                                                        .replace(/\{\{(.*?)\}\}/g, '<code style="background:rgba(251,191,36,0.15);color:#fbbf24;padding:1px 6px;border-radius:4px;font-size:12px">{{$1}}</code>')
-                                                }} />
+                                                <span dangerouslySetInnerHTML={{ __html: inlineMarkup(line.replace(/^[-•✓✅]\s*/, '')) }} />
                                             </div>
                                         );
                                         // XML tags
                                         if (/^<\/?[A-Za-z]+>$/.test(line.trim())) return (
-                                            <div key={i} className="text-xs font-mono text-red-400/70 py-0.5">{line}</div>
+                                            <div key={i} className="text-xs font-mono text-[var(--danger-fg)] py-0.5">{line}</div>
                                         );
                                         // Warning/negative lines
                                         if (/🚫|⛔|NEVER|DON'T|NOT|ZERO/.test(line)) return (
-                                            <div key={i} className="text-[13px] text-red-400 py-0.5 font-medium">{line}</div>
+                                            <div key={i} className="text-[13px] text-[var(--danger-fg)] py-0.5 font-medium">{line}</div>
                                         );
                                         // Empty lines
                                         if (!line.trim()) return <div key={i} className="h-2" />;
                                         // Default paragraph
                                         return (
-                                            <p key={i} className="text-[13px] leading-relaxed text-zinc-300 py-0.5"
-                                                dangerouslySetInnerHTML={{
-                                                    __html: line
-                                                        .replace(/\*\*(.*?)\*\*/g, '<strong style="color:#e2e8f0">$1</strong>')
-                                                        .replace(/\{\{(.*?)\}\}/g, '<code style="background:rgba(251,191,36,0.15);color:#fbbf24;padding:1px 6px;border-radius:4px;font-size:12px">{{$1}}</code>')
-                                                        .replace(/`([^`]+)`/g, '<code style="background:rgba(139,92,246,0.1);color:#a78bfa;padding:1px 5px;border-radius:3px;font-size:12px">$1</code>')
-                                                }} />
+                                            <p key={i} className="text-[13px] leading-relaxed text-text2 py-0.5"
+                                                dangerouslySetInnerHTML={{ __html: inlineMarkup(line) }} />
                                         );
                                     })}
                                 </div>
@@ -729,8 +788,8 @@ const PromptArchitect = () => {
                                         <DomainIcon className="w-8 h-8" style={{ color: domainColor.text }} />
                                     </div>
                                     <p className="text-muted text-sm mb-1">{t.outputHere}</p>
-                                    <p className="text-xs text-zinc-600">{t.dynamicContext}</p>
-                                    <p className="text-[10px] text-zinc-700 mt-4">⌨️ Ctrl+Enter {isArabic ? 'لتوليد سريع' : 'to generate'}</p>
+                                    <p className="text-xs text-muted">{t.dynamicContext}</p>
+                                    <p className="text-[10px] text-muted mt-4">⌨️ Ctrl+Enter {isArabic ? 'لتوليد سريع' : 'to generate'}</p>
                                 </div>
                             )}
                         </div>
@@ -740,16 +799,16 @@ const PromptArchitect = () => {
                     {abMode && abPromptB && (
                         <div className="code-block border-orange-500/20">
                             <div className="code-block-header" style={{ background: 'rgba(249,115,22,0.1)' }}>
-                                <span className="text-xs text-orange-400 font-medium flex items-center gap-2">
+                                <span className="text-xs text-[var(--warn-fg)] font-medium flex items-center gap-2">
                                     🅱️ {isArabic ? 'النسخة البديلة' : 'Variant B'} ({resolvedStrategy === 'chain_of_thought' ? 'Tree-of-Thought' : 'Chain-of-Thought'})
                                 </span>
-                                <button onClick={() => { setGeneratedPrompt(abPromptB); setAbPromptB(generatedPrompt); }} className="text-[10px] text-orange-400 hover:text-orange-300">
+                                <button onClick={() => { setGeneratedPrompt(abPromptB); setAbPromptB(generatedPrompt); }} className="text-[10px] text-[var(--warn-fg)] hover:text-[var(--warn-fg)]">
                                     {isArabic ? 'استبدال ↔' : 'Swap ↔'}
                                 </button>
                             </div>
                             <div className="code-block-content max-h-[200px] overflow-auto">
                                 {isLoadingB ? (
-                                    <div className="flex items-center justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-orange-400" /></div>
+                                    <div className="flex items-center justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-[var(--warn-fg)]" /></div>
                                 ) : (
                                     <pre className="whitespace-pre-wrap text-orange-200/80 text-sm">{abPromptB}</pre>
                                 )}
@@ -761,13 +820,13 @@ const PromptArchitect = () => {
                     {showSimulation && (
                         <div className="code-block border-border/30">
                             <div className="code-block-header" style={{ background: 'rgba(59,130,246,0.1)' }}>
-                                <span className="text-xs text-blue-400 font-medium flex items-center gap-2">
+                                <span className="text-xs text-[var(--chart-5)] font-medium flex items-center gap-2">
                                     <Play className="w-3.5 h-3.5" /> {t.testOutput}
                                 </span>
                             </div>
                             <div className="code-block-content max-h-[180px] overflow-auto">
                                 {isSimulating ? (
-                                    <div className="flex items-center justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-blue-400" /></div>
+                                    <div className="flex items-center justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-[var(--chart-5)]" /></div>
                                 ) : (
                                     <pre className="whitespace-pre-wrap text-blue-200/80 text-sm">{simulatedOutput}</pre>
                                 )}
@@ -786,7 +845,7 @@ const PromptArchitect = () => {
                         return (
                             <div className="p-2 rounded-lg border border-amber-500/15 bg-amber-500/5 space-y-1">
                                 {warnings.map((w, i) => (
-                                    <div key={i} className="flex items-center gap-2 text-[10px] text-amber-400">
+                                    <div key={i} className="flex items-center gap-2 text-[10px] text-[var(--warn-fg)]">
                                         <AlertTriangle className="w-3 h-3 shrink-0" /> {w}
                                     </div>
                                 ))}
@@ -797,8 +856,8 @@ const PromptArchitect = () => {
                     {/* Pro Tip */}
                     <div className="p-3 rounded-lg border border-amber-500/10 bg-amber-500/5" dir={textDir}>
                         <div className="flex items-start gap-3" style={{ flexDirection: flexDir }}>
-                            <Sparkles className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-                            <p className="text-xs text-amber-100/60" style={{ textAlign: isArabic ? 'right' : 'left' }}>{t.proTip}</p>
+                            <Sparkles className="w-4 h-4 text-[var(--warn-fg)] shrink-0 mt-0.5" />
+                            <p className="text-xs text-text2" style={{ textAlign: isArabic ? 'right' : 'left' }}>{t.proTip}</p>
                         </div>
                     </div>
                 </div>
@@ -808,55 +867,110 @@ const PromptArchitect = () => {
             {
                 showTemplates && (
                     <>
-                        <div className="fixed inset-0 z-[9998] bg-black/60 backdrop-blur-sm" onClick={() => setShowTemplates(false)}
+                        <div className="fixed inset-0 z-[9998] bg-black/60 backdrop-blur-sm" onClick={closeTemplates}
                             style={{ animation: 'fadeIn 0.15s ease-out' }} />
                         <div className="fixed inset-0 z-[9999] flex items-center justify-center pointer-events-none">
-                            <div className="pointer-events-auto w-[680px] max-w-[92vw] max-h-[80vh] rounded-2xl overflow-hidden flex flex-col"
-                                style={{ animation: 'fadeIn 0.2s ease-out', background: 'var(--modal-bg)', backdropFilter: 'blur(20px)', border: '1px solid rgba(168,85,247,0.2)', boxShadow: 'var(--dropdown-shadow)' }}>
+                            <div role="dialog" aria-modal="true" aria-label={t.browseTemplates}
+                                className="pointer-events-auto w-[680px] max-w-[92vw] max-h-[80vh] rounded-2xl overflow-hidden flex flex-col"
+                                style={{ animation: 'fadeIn 0.2s ease-out', background: 'var(--modal-bg)', backdropFilter: 'blur(20px)', border: '1px solid var(--brand-border)', boxShadow: 'var(--dropdown-shadow)' }}>
                                 {/* Header */}
-                                <div className="flex items-center justify-between px-5 py-4 border-b border-purple-500/10" style={{ background: 'rgba(168,85,247,0.04)' }}>
+                                <div className="flex items-center justify-between px-5 py-4" style={{ background: 'var(--brand-tint)', borderBottom: '1px solid var(--border-color)' }}>
                                     <div className="flex items-center gap-3">
-                                        <BookOpen className="w-5 h-5 text-purple-400" />
-                                        <h3 className="font-bold text-text1">{t.browseTemplates}</h3>
-                                        <span className="text-xs text-zinc-500 bg-zinc-800 px-2 py-0.5 rounded-full">{domainTemplates.length}</span>
+                                        <BookOpen className="w-5 h-5" style={{ color: 'var(--brand-fg)' }} aria-hidden="true" />
+                                        <h3 className="font-bold text-text1">
+                                            {pendingTemplate ? (pendingTemplate.title?.[lang] || pendingTemplate.title?.en) : t.browseTemplates}
+                                        </h3>
+                                        {!pendingTemplate && (
+                                            <span className="text-xs text-text2 px-2 py-0.5 rounded-full bg-bg2">{domainTemplates.length}</span>
+                                        )}
                                     </div>
-                                    <button onClick={() => setShowTemplates(false)} className="p-1.5 rounded-lg hover:bg-white/5"><X className="w-4 h-4 text-zinc-400" /></button>
+                                    <button onClick={closeTemplates} aria-label={isArabic ? 'إغلاق' : 'Close'}
+                                        className="focus-ring p-1.5 rounded-lg hover:bg-bg2"><X className="w-4 h-4 text-text2" /></button>
                                 </div>
-                                {/* Search */}
-                                <div className="px-5 py-3 border-b border-white/5">
-                                    <div className="relative">
-                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
-                                        <input type="text" value={templateSearch} onChange={(e) => setTemplateSearch(e.target.value)}
-                                            placeholder="Search templates..." className="input-base input-sm w-full pl-10" />
-                                    </div>
-                                </div>
-                                {/* Templates List */}
-                                <div className="flex-1 overflow-y-auto p-4 space-y-3">
-                                    {domainTemplates.map((tmpl) => (
-                                        <div key={tmpl.id} className="p-4 rounded-xl border border-white/5 hover:border-purple-500/20 transition-all cursor-pointer group"
-                                            style={{ background: 'var(--overlay-2)' }} onClick={() => handleUseTemplate(tmpl)}>
-                                            <div className="flex items-start justify-between">
-                                                <div>
-                                                    <h4 className="text-sm font-semibold text-text1 group-hover:text-purple-400 transition-colors">
-                                                        {tmpl.title?.[lang] || tmpl.title?.en}
-                                                    </h4>
-                                                    <p className="text-xs text-zinc-500 mt-1">{tmpl.description?.[lang] || tmpl.description?.en}</p>
+
+                                {pendingTemplate ? (
+                                    /* ── Stage 2: collect the template's variables ── */
+                                    <>
+                                        <div className="flex-1 overflow-y-auto p-5 space-y-3">
+                                            <p className="text-xs text-text2">
+                                                {isArabic
+                                                    ? 'املأ المتغيرات دي — أي حقل تسيبه فاضي هيتحول لعلامة [الاسم] تقدر تعدلها بعدين.'
+                                                    : 'Fill these in — anything left blank becomes a [NAME] marker you can edit afterwards.'}
+                                            </p>
+                                            {pendingTemplate.variables.map((v) => (
+                                                <div key={v}>
+                                                    <label htmlFor={`tmplvar-${v}`} className="label-text text-[11px] mb-1 block">{v}</label>
+                                                    <textarea
+                                                        id={`tmplvar-${v}`}
+                                                        value={templateVars[v] ?? ''}
+                                                        onChange={(e) => setTemplateVars((prev) => ({ ...prev, [v]: e.target.value }))}
+                                                        rows={v.includes('CODE') || v.includes('SNIPPET') || v.includes('TEXT') ? 4 : 2}
+                                                        className="input-base w-full resize-none text-xs p-2.5 leading-relaxed font-mono"
+                                                    />
                                                 </div>
-                                                <span className={`text-[10px] px-2 py-0.5 rounded-full ${tmpl.difficulty === 'advanced' ? 'bg-red-500/10 text-red-400' : tmpl.difficulty === 'intermediate' ? 'bg-amber-500/10 text-amber-400' : 'bg-emerald-500/10 text-emerald-400'}`}>
-                                                    {tmpl.difficulty}
-                                                </span>
-                                            </div>
-                                            <div className="flex gap-1.5 mt-2">
-                                                {tmpl.tags?.map(tag => (
-                                                    <span key={tag} className="text-[10px] px-1.5 py-0.5 rounded bg-white/5 text-zinc-500">{tag}</span>
-                                                ))}
+                                            ))}
+                                        </div>
+                                        <div className="flex items-center justify-between gap-2 px-5 py-3" style={{ borderTop: '1px solid var(--border-color)' }}>
+                                            <button onClick={() => { setPendingTemplate(null); setTemplateVars({}); }}
+                                                className="focus-ring rounded-lg px-3 py-1.5 text-xs text-text2 hover:text-text1 transition-colors">
+                                                {isArabic ? '→ رجوع' : '← Back'}
+                                            </button>
+                                            <button onClick={() => applyTemplate(pendingTemplate, templateVars)}
+                                                className="press focus-ring rounded-lg px-4 py-1.5 text-xs font-bold on-brand text-white transition-opacity hover:opacity-90"
+                                                style={{ background: 'linear-gradient(135deg, var(--cta-1), var(--cta-2))' }}>
+                                                {isArabic ? 'إدراج القالب' : 'Insert template'}
+                                            </button>
+                                        </div>
+                                    </>
+                                ) : (
+                                    /* ── Stage 1: browse ── */
+                                    <>
+                                        <div className="px-5 py-3" style={{ borderBottom: '1px solid var(--border-color)' }}>
+                                            <div className="relative">
+                                                <Search className="absolute top-1/2 -translate-y-1/2 w-4 h-4 text-muted" style={{ insetInlineStart: '0.75rem' }} aria-hidden="true" />
+                                                <input type="text" value={templateSearch} onChange={(e) => setTemplateSearch(e.target.value)}
+                                                    aria-label={isArabic ? 'بحث في القوالب' : 'Search templates'}
+                                                    placeholder={isArabic ? 'ابحث في القوالب...' : 'Search templates...'} className="input-base input-sm w-full ps-10" />
                                             </div>
                                         </div>
-                                    ))}
-                                    {domainTemplates.length === 0 && (
-                                        <div className="text-center py-8 text-zinc-500 text-sm">No templates found</div>
-                                    )}
-                                </div>
+                                        <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                                            {domainTemplates.map((tmpl) => (
+                                                <button key={tmpl.id} type="button" onClick={() => handleUseTemplate(tmpl)}
+                                                    className="focus-ring w-full text-start p-4 rounded-xl border border-border transition-all cursor-pointer group hover:border-[var(--brand-border-strong)]"
+                                                    style={{ background: 'var(--overlay-2)' }}>
+                                                    <div className="flex items-start justify-between gap-3">
+                                                        <div>
+                                                            <h4 className="text-sm font-semibold text-text1 transition-colors">
+                                                                {tmpl.title?.[lang] || tmpl.title?.en}
+                                                            </h4>
+                                                            <p className="text-xs text-text2 mt-1">{tmpl.description?.[lang] || tmpl.description?.en}</p>
+                                                        </div>
+                                                        <span className="text-[10px] px-2 py-0.5 rounded-full shrink-0"
+                                                            style={{
+                                                                background: `color-mix(in srgb, var(${tmpl.difficulty === 'advanced' ? '--danger-fg' : tmpl.difficulty === 'intermediate' ? '--warn-fg' : '--success-fg'}) 12%, transparent)`,
+                                                                color: `var(${tmpl.difficulty === 'advanced' ? '--danger-fg' : tmpl.difficulty === 'intermediate' ? '--warn-fg' : '--success-fg'})`,
+                                                            }}>
+                                                            {tmpl.difficulty}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex gap-1.5 mt-2 flex-wrap">
+                                                        {tmpl.tags?.map(tag => (
+                                                            <span key={tag} className="text-[10px] px-1.5 py-0.5 rounded bg-bg2 text-text2">{tag}</span>
+                                                        ))}
+                                                        {tmpl.variables?.length > 0 && (
+                                                            <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: 'var(--brand-tint)', color: 'var(--brand-fg)' }}>
+                                                                {tmpl.variables.length} {isArabic ? 'متغير' : 'vars'}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </button>
+                                            ))}
+                                            {domainTemplates.length === 0 && (
+                                                <div className="text-center py-8 text-text2 text-sm">{isArabic ? 'لا توجد قوالب' : 'No templates found'}</div>
+                                            )}
+                                        </div>
+                                    </>
+                                )}
                             </div>
                         </div>
                     </>

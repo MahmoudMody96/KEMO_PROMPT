@@ -1,5 +1,4 @@
 ﻿// SCREENPLAY ENGINE - generate_prompt + generateSystemPrompt
-import { TEXT_MODEL } from '../config.js';
 import { callOpenRouter } from '../openrouter.js';
 import { getAspectRatioRules } from '../knowledgeBase.js';
 import { getPersona } from './personaEngine.js';
@@ -9,6 +8,7 @@ import { getVoiceToneDNA } from './voiceToneDnaEngine.js';
 import { getDialectDNA } from './dialectDnaEngine.js';
 import { getTransparentCreatureRules } from './transparentCreatureEngine.js';
 import { getGenreGoal } from './genreGoalEngine.js';
+import { enforceConsistency } from './consistencyLock.js';
 
 export async function generate_prompt(inputs) {
   // 1. THE INPUT MATRIX (Receive & Lock)
@@ -24,7 +24,11 @@ export async function generate_prompt(inputs) {
     style: (inputs.videoStyle || 'Cinematic').toLowerCase(),
     character_type: primaryChar,
     secondary_characters: secondaryChars.filter(s => s),
-    scenes: parseInt(inputs.numScenes) || 5,
+    // Clamped: numScenes reaches here from a bare number input and from
+    // unvalidated model output. Below 4 the dramatic-arc bands below invert
+    // (a 3-scene video was told "scenes 4-3: climax"); very large values make
+    // the system prompt exceed the server's 40,000-char cap and 413.
+    scenes: Math.min(Math.max(parseInt(inputs.numScenes) || 5, 4), 20),
     characters: totalCharacters,
     duration: parseInt(inputs.duration) || 10,
     tone: (inputs.voiceTone || inputs.tone || 'Professional').toLowerCase(),
@@ -40,7 +44,18 @@ export async function generate_prompt(inputs) {
   // 3. Call The LLM with proper system/user separation
   const allChars = [primaryChar, ...secondaryChars.filter(s => s)].join(' + ');
   const userMessage = `الفكرة: ${data.concept}\nالنوع: ${data.genre} | الأسلوب: ${data.style} | الشخصيات: ${allChars}\nالمشاهد: ${data.scenes} | عدد الشخصيات: ${data.characters} | المدة: ${data.duration}s\nاللهجة: ${data.dialect} | النسبة: ${data.aspectRatio}${data.notes ? '\nملاحظات: ' + data.notes : ''}${data.prohibitions ? '\nمحظورات: ' + data.prohibitions : ''}\n\nابدأ التنفيذ الآن. أخرج JSON فقط.`;
-  return callOpenRouter(userMessage, TEXT_MODEL, false, 8192, 0.6, systemPrompt, 'generate');
+  const result = await callOpenRouter(userMessage, null, false, 8192, 0.6, systemPrompt, 'generate');
+
+  // The CHARACTER LOCK section of the system prompt asks the model to repeat
+  // each character's description verbatim in every scene. Asking is not
+  // enforcing — on longer scene counts the model paraphrases the costume or
+  // drops the CREF entirely. This rebuilds the reference from the character
+  // sheet so the guarantee holds by construction rather than by compliance.
+  const { screenplay, report } = enforceConsistency(result);
+  if (report.enforced > 0) {
+    console.info(`[consistency] rebuilt CREF on ${report.enforced}/${report.totalScenes} scenes`);
+  }
+  return { ...screenplay, _consistency: report };
 }
 
 /**
@@ -87,7 +102,16 @@ ${nextScene ? `المشهد التالي (${sceneNum + 1}): ${nextScene.visual_s
 2. المشهد لازم يكون مرتبط بالمشهد قبله وبعده
 3. JSON فقط بدون شرح`;
 
-  return callOpenRouter(contextPrompt, TEXT_MODEL, false, 2048, 0.65, null, 'generate');
+  const scene = await callOpenRouter(contextPrompt, null, false, 2048, 0.65, null, 'generate');
+
+  // A regenerated scene is the most likely place for drift: the model is given
+  // only two neighbouring scenes as context, not the full cast sheet, so it
+  // reconstructs the character from a summary. Anchor it the same way.
+  const { screenplay } = enforceConsistency({
+    characters: existingCharacters || [],
+    scenes: [scene],
+  });
+  return screenplay.scenes[0] ?? scene;
 }
 
 export const generateSystemPrompt = (data) => {
@@ -96,8 +120,20 @@ export const generateSystemPrompt = (data) => {
   const style = data.style || "High-End Commercial";
   const duration = data.duration || 15;
   const characterType = data.character_type || "Realistic";
-  const numCharacters = data.characters || 1;
-  const numScenes = data.scenes || 5;
+  // Clamped here as well as in generate_prompt. The dramatic-arc bands below
+  // are derived from numScenes, and below 4 they invert — a 1-scene request
+  // produced "scenes 2-1: climax". generate_prompt already clamps, but the
+  // invariant belongs with the code that depends on it, not only with one
+  // caller: this function is exported and takes raw data.
+  const numScenes = Math.min(Math.max(parseInt(data.scenes, 10) || 5, 4), 20);
+
+  // The cast, and the count derived FROM it — never taken on trust from
+  // data.characters. The two could disagree: `characters: 3` with an empty
+  // secondary list told the model "produce exactly 3 characters" while
+  // describing only one, a contradiction inside a single prompt. Deriving the
+  // count makes it impossible for the number and the roster to desynchronise.
+  const secondaryCharacters = (data.secondary_characters || []).filter(Boolean);
+  const numCharacters = 1 + secondaryCharacters.length;
   const dialect = data.dialect || 'Egyptian Arabic (Masri)';
   const voiceTone = data.tone || 'Professional';
   const aspectRatio = data.aspectRatio || '16:9';
@@ -123,7 +159,6 @@ export const generateSystemPrompt = (data) => {
 
   // 8. CHARACTER DNA — الحمض النووي للشخصية (Primary + Secondary Multi-Character)
   const charDNA = getCharacterDNA(characterType);
-  const secondaryCharacters = data.secondary_characters || [];
   const secondaryDNAs = secondaryCharacters.map(sc => getCharacterDNA(sc));
 
   const charRule = isNonHuman

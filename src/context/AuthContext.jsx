@@ -8,6 +8,19 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { auth as authApi } from '../lib/apiClient';
 import { CREDITS_CHANGED_EVENT } from '../lib/events';
 
+// Keys holding the signed-in user's own creative work. Cleared on sign-out so
+// the next person on a shared machine does not see the previous user's
+// generated scenarios and saved templates. Theme and language are deliberately
+// kept — they are device preferences, not user content.
+//
+// Module scope, so the signOut callback below keeps a stable identity.
+const USER_DATA_KEYS = [
+    'kemo-last-scenario',
+    'kemo-scenario-history',
+    'pa_custom_templates',
+    'promptforge_prev_ideas',
+];
+
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
@@ -79,6 +92,11 @@ export function AuthProvider({ children }) {
             await authApi.logout();
         } catch (err) {
             console.error('[auth] sign out failed:', err.message);
+        }
+        try {
+            USER_DATA_KEYS.forEach(k => localStorage.removeItem(k));
+        } catch (err) {
+            console.error('[auth] could not clear local data:', err.message);
         }
         setUser(null);
     }, []);

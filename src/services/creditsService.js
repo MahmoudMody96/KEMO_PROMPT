@@ -15,7 +15,17 @@ export const CREDIT_COSTS = Object.freeze({
     architect: 2,
 });
 
-// Must stay in sync with PricingPage.jsx and server/src/routes/billing.js.
+// Display metadata for a plan key as STORED BY THE SERVER (users.plan).
+//
+// Note the key/label split: the checkout tier sold as "Premium" on PricingPage
+// is stored as `enterprise` — billing.js maps premium -> enterprise, and the DB
+// CHECK constraint only accepts free|basic|pro|enterprise. So the key here is
+// `enterprise` while the label must read "Premium", or someone buys Premium and
+// their profile badge says Enterprise.
+//
+// Only `name`, `name_ar` and `credits_monthly` are read (App.jsx). `price_monthly`
+// and `features` are NOT rendered anywhere — PricingPage carries its own pricing
+// copy, and the authoritative price is whatever the LemonSqueezy variant charges.
 export const PLANS = {
     free: {
         name: 'Free',
@@ -41,11 +51,12 @@ export const PLANS = {
         features: ['500 credits/month', 'Premium models', 'Priority support', 'Export history'],
         features_ar: ['500 رصيد/شهر', 'نماذج متقدمة', 'دعم أولوية', 'تصدير التاريخ'],
     },
+    // Sold as "Premium" on the pricing page; stored as `enterprise`.
     enterprise: {
-        name: 'Enterprise',
-        name_ar: 'مؤسسي',
+        name: 'Premium',
+        name_ar: 'المميز',
         credits_monthly: 9999,
-        price_monthly: 29.99,
+        price_monthly: 39.99,
         features: ['Effectively unlimited credits', 'All models', 'API access', 'Team features'],
         features_ar: ['رصيد شبه غير محدود', 'كل النماذج', 'وصول API', 'ميزات الفريق'],
     },

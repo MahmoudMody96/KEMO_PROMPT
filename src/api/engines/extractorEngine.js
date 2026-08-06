@@ -2,7 +2,6 @@
 // EXTRACTOR ENGINE — Image & Video forensic analysis
 // ═══════════════════════════════════════════════════════════════════
 
-import { VISION_MODEL } from '../config.js';
 import { callOpenRouterVision, callGeminiMultiImage, toBase64 } from '../openrouter.js';
 import { extractFramesInterval } from '../utils/frameExtractor.js';
 
@@ -53,8 +52,12 @@ Return ONLY valid JSON:
 
         return await callOpenRouterVision(prompt, pureBase64, mimeType);
     } catch (e) {
+        // Throw, like analyze_video already does. Returning null made a failed
+        // extraction indistinguishable from "no result": the caller skipped both
+        // render branches and the spinner simply stopped, telling the user
+        // nothing at all.
         console.error(`Image Error: ${e.message}`);
-        return null;
+        throw e;
     }
 }
 

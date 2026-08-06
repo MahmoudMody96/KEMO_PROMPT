@@ -47,9 +47,11 @@ export default defineConfig([
     },
   },
 
-  // --- Server code (Vercel functions + Express dev proxy) ---
+  // --- Server code (Express API) ---
+  // The old 'api/**/*.js' glob referred to the Vercel functions directory,
+  // which no longer exists since the move to a self-hosted Express server.
   {
-    files: ['api/**/*.js', 'server/**/*.js'],
+    files: ['server/**/*.js'],
     extends: [js.configs.recommended],
     languageOptions: {
       ecmaVersion: 2022,
@@ -64,6 +66,7 @@ export default defineConfig([
   // --- Build tooling ---
   {
     files: ['*.config.js'],
+    extends: [js.configs.recommended],
     languageOptions: { globals: { ...globals.node } },
   },
 ])

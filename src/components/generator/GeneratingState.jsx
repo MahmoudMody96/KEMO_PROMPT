@@ -54,8 +54,8 @@ const GeneratingState = ({ language, progress = 0 }) => {
                     />
                 </div>
                 <div className="flex justify-between mt-2">
-                    <span className="text-xs text-zinc-500">{Math.round(progress)}%</span>
-                    <span className="text-xs text-zinc-500">
+                    <span className="text-xs text-muted">{Math.round(progress)}%</span>
+                    <span className="text-xs text-muted">
                         {isAr ? 'يرجى الانتظار...' : 'Please wait...'}
                     </span>
                 </div>
@@ -69,7 +69,7 @@ const GeneratingState = ({ language, progress = 0 }) => {
                             <div
                                 className={`w-7 h-7 rounded-full flex items-center justify-center text-xs transition-all duration-500 ${progress >= stage.at
                                     ? 'bg-blue-500/20 text-blue-400 scale-110'
-                                    : 'bg-white/5 text-zinc-600 scale-100'
+                                    : 'bg-white/5 text-muted scale-100'
                                     }`}
                             >
                                 {stage.icon}

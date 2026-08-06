@@ -24,9 +24,12 @@ dist-ssr
 *.sw?
 
 # Environment variables
-.env
-.env.local
-server/.env
+# Broad by default: the previous list named only .env, .env.local and
+# server/.env, so a future .env.production or server/.env.local would have been
+# committed. .env.example is the one file that must stay tracked.
+.env*
+server/.env*
+!.env.example
 
 # Build artifacts
 build_output.txt
@@ -38,13 +41,15 @@ build_output.txt
 *.pem
 *.key
 
-# Local helper scripts (not part of the app bundle)
-src/api/_extract.ps1
+# (src/api/_extract.ps1 was a one-shot migration script that sliced the old
+#  monolithic promptApi.js by line number. Its output has been committed for a
+#  long time and its offsets no longer refer to anything, so it was deleted.)
 
 # Tooling state (not part of the app)
 .claude-flow/
 .claude/proven-config.json
 .claude/.proven-config-version
+.claude/settings.local.json
 
 # Stray files from shell redirects
 /[0-9]*

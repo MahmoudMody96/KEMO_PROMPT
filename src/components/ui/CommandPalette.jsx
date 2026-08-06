@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAppContext } from '../../context/AppContext';
+import { useModal } from '../../lib/useModal';
 import {
     Home, Sparkles, Globe, Flame, Wand2, Lock,
     DollarSign, Info, Briefcase, Mail, Search, X
@@ -37,6 +38,9 @@ const CommandPalette = () => {
     const [query, setQuery] = useState('');
     const [selectedIdx, setSelectedIdx] = useState(0);
     const inputRef = useRef(null);
+    // Traps Tab inside the palette, locks background scroll, and restores focus
+    // to whatever was focused before it opened.
+    const dialogRef = useModal(open, () => setOpen(false));
 
     const isAr = language === 'ar';
 
@@ -107,6 +111,10 @@ const CommandPalette = () => {
 
             {/* Modal */}
             <div
+                ref={dialogRef}
+                role="dialog"
+                aria-modal="true"
+                aria-label={isAr ? 'لوحة الأوامر' : 'Command palette'}
                 className="relative w-full max-w-lg mx-4 rounded-2xl overflow-hidden shadow-2xl"
                 style={{
                     background: 'var(--bg-surface, #1e1e2e)',
@@ -117,6 +125,8 @@ const CommandPalette = () => {
                 {/* Search input */}
                 <div className="flex items-center gap-3 px-4 py-3 border-b" style={{ borderColor: 'var(--border-color)' }}>
                     <Search className="w-5 h-5 text-muted flex-shrink-0" />
+                    {/* combobox + listbox pairing, so a screen reader announces
+                        the arrow-key selection instead of leaving it silent. */}
                     <input
                         ref={inputRef}
                         value={query}
@@ -125,6 +135,12 @@ const CommandPalette = () => {
                         placeholder={isAr ? 'ابحث عن أداة أو صفحة...' : 'Search tools & pages...'}
                         className="flex-1 bg-transparent text-text1 text-sm outline-none placeholder:text-muted"
                         dir={isAr ? 'rtl' : 'ltr'}
+                        role="combobox"
+                        aria-expanded="true"
+                        aria-controls="command-palette-results"
+                        aria-activedescendant={filtered[selectedIdx] ? `command-option-${filtered[selectedIdx].id}` : undefined}
+                        aria-autocomplete="list"
+                        aria-label={isAr ? 'ابحث عن أداة أو صفحة' : 'Search tools and pages'}
                     />
                     <kbd className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-mono rounded border text-muted"
                         style={{ borderColor: 'var(--border-color)', background: 'var(--overlay-3)' }}>
@@ -136,7 +152,8 @@ const CommandPalette = () => {
                 </div>
 
                 {/* Results */}
-                <div className="max-h-80 overflow-y-auto py-2">
+                <div className="max-h-80 overflow-y-auto py-2" id="command-palette-results" role="listbox"
+                    aria-label={isAr ? 'النتائج' : 'Results'}>
                     {filtered.length === 0 ? (
                         <div className="px-4 py-8 text-center text-muted text-sm">
                             {isAr ? 'مفيش نتائج' : 'No results found'}
@@ -149,6 +166,9 @@ const CommandPalette = () => {
                             return (
                                 <button
                                     key={cmd.id}
+                                    id={`command-option-${cmd.id}`}
+                                    role="option"
+                                    aria-selected={isSelected}
                                     onClick={() => handleSelect(cmd.id)}
                                     onMouseEnter={() => setSelectedIdx(i)}
                                     className={`w-full flex items-center gap-3 px-4 py-2.5 transition-colors text-left ${isSelected ? 'bg-white/5' : 'hover:bg-white/3'

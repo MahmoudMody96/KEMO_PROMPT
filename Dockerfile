@@ -21,6 +21,21 @@ COPY package.json package-lock.json* ./
 RUN npm ci --include=dev
 
 COPY . .
+
+# Vite inlines import.meta.env.VITE_* at BUILD time. These must therefore be
+# Coolify *Build* Variables, not runtime env — setting them at runtime has no
+# effect on an already-built bundle.
+#
+# Without them the three variant IDs compile to '' and PricingPage refuses every
+# plan with "this plan is not configured yet", so checkout is dead in the image.
+# .dockerignore excludes .env, so there is no file for Vite to fall back on.
+ARG VITE_LEMON_VARIANT_BASIC=""
+ARG VITE_LEMON_VARIANT_PRO=""
+ARG VITE_LEMON_VARIANT_PREMIUM=""
+ENV VITE_LEMON_VARIANT_BASIC=$VITE_LEMON_VARIANT_BASIC \
+    VITE_LEMON_VARIANT_PRO=$VITE_LEMON_VARIANT_PRO \
+    VITE_LEMON_VARIANT_PREMIUM=$VITE_LEMON_VARIANT_PREMIUM
+
 RUN npm run build
 
 
@@ -46,12 +61,17 @@ RUN addgroup -g 1001 -S kemo && adduser -u 1001 -S kemo -G kemo \
     && chown -R kemo:kemo /app
 USER kemo
 
+# PORT is configurable at runtime (config.js honours it), so the healthcheck
+# below reads the same variable instead of a hardcoded 3000 — otherwise setting
+# PORT in Coolify leaves the container permanently "unhealthy" while it serves
+# perfectly well.
+ENV PORT=3000
 EXPOSE 3000
 
 # Any HTTP answer means the process is alive and serving. Readiness detail
 # (database, migrations) is in the body of /api/health — a container that is up
 # but degraded is far easier to diagnose than one Docker has killed.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-    CMD node -e "fetch('http://127.0.0.1:3000/api/health').then(()=>process.exit(0)).catch(()=>process.exit(1))"
+    CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||3000)+'/api/health').then(()=>process.exit(0)).catch(()=>process.exit(1))"
 
 CMD ["node", "server/src/index.js"]

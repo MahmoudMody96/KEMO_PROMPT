@@ -8,6 +8,12 @@
 export const API_URL = '/api/generate';
 export const VISION_URL = '/api/vision';
 
-// Models
-export const TEXT_MODEL = 'google/gemini-2.0-flash-001';
-export const VISION_MODEL = 'google/gemini-2.0-flash-001';
+// NOTE: there are deliberately no model constants here any more.
+//
+// The server picks the model (OPENROUTER_MODEL in server/.env) and ignores any
+// model the browser asks for unless it is explicitly allow-listed — credits are
+// priced per action, not per model, so a client-chosen model would let anyone
+// buy an expensive completion at a fixed price.
+//
+// Keeping a copy of the model name here meant two sources of truth that silently
+// drifted apart. To change the model, change it in server/.env — one place.

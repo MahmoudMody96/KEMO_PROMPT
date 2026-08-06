@@ -4,21 +4,40 @@ description: How to build and verify the project
 
 ## Build & Verify
 
-// turbo-all
+Run from the project root (`D:\MAHMOUD\projects\prompt_gen`). These are the same
+steps CI runs (`.github/workflows/ci.yml`), so passing them locally means green CI.
 
-1. Run the build command in the background:
+1. **Lint** — frontend and server:
 ```
-npx vite build
+npx eslint src server/src
 ```
-- Cwd: `d:\MAHMOUD\برمجة\موقع توليد برومبتات`
-- WaitMsBeforeAsync: 500 (send to background immediately)
-- SafeToAutoRun: true
 
-2. Check build status with `command_status` tool (WaitDurationSeconds: 30)
+2. **Tests** — node's built-in runner, no extra deps:
+```
+npm test
+```
 
-3. If build succeeds, continue with next task. If it fails, fix the errors.
+3. **Build** — the production frontend bundle:
+```
+npm run build
+```
 
-## Important Notes
-- **NEVER use `&&` in PowerShell** — use `;` instead
-- **NEVER block on terminal commands** — always use WaitMsBeforeAsync: 500
-- **Continue working** while commands run in background
+4. **Server syntax** — the build never touches server code, so check it separately:
+```
+cd server; Get-ChildItem -Recurse src -Filter *.js | ForEach-Object { node --check $_.FullName }
+```
+
+If any step fails, fix the errors before moving on.
+
+## Run locally
+
+- API + DB-backed server (serves `dist/` too): `cd server; npm start` → `:3001`
+  in dev, `:3000` in the container. Migrations apply automatically on boot.
+- Frontend with HMR: `npm run dev` → `:5173`, proxies `/api` to the server.
+- First admin: `cd server; $env:ADMIN_EMAIL='you@example.com'; npm run make-admin`
+
+## Notes
+
+- Windows PowerShell: use `;` to chain, not `&&`.
+- The model is set in `server/.env` (`OPENROUTER_MODEL` / `OPENROUTER_VISION_MODEL`);
+  the frontend never sends one.

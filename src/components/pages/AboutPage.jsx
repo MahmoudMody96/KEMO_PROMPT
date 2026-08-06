@@ -1,88 +1,120 @@
 // src/components/pages/AboutPage.jsx
+//
+// Rebuilt on the shared identity layer (see index.css) so this page belongs to
+// the same product as the landing.
+//
+// The previous version advertised "10K+ Active Users", "500K+ Prompts
+// Generated", "99.9% Uptime" and "built with feedback from thousands of
+// creators". None of those were measured, and this page is public now. They are
+// replaced with figures that are true of the software and can be checked in the
+// source: the engine, style, genre and character-type counts.
+
 import React from 'react';
 import { useAppContext } from '../../context/AppContext';
-import { Sparkles, Target, Users, Zap, Globe, Award } from 'lucide-react';
+import { Sparkles, Target, ShieldCheck, Zap, Info } from 'lucide-react';
 
 const AboutPage = () => {
-    const { language, isRTL } = useAppContext();
+    const { language, setActiveTab } = useAppContext();
     const isAr = language === 'ar';
 
-    const values = [
-        { icon: Sparkles, titleEn: 'AI-First Innovation', titleAr: 'ابتكار بالذكاء الاصطناعي', descEn: 'We build cutting-edge AI tools that empower creators worldwide.', descAr: 'نبني أدوات ذكاء اصطناعي متطورة تمكّن صنّاع المحتوى حول العالم.', color: '#818cf8' },
-        { icon: Target, titleEn: 'Mission-Driven', titleAr: 'مدفوعون بالرسالة', descEn: 'Making professional content creation accessible to everyone.', descAr: 'جعل إنشاء المحتوى الاحترافي متاحاً للجميع.', color: '#f59e0b' },
-        { icon: Users, titleEn: 'Community First', titleAr: 'المجتمع أولاً', descEn: 'Built with feedback from thousands of content creators.', descAr: 'مبني بملاحظات آلاف صنّاع المحتوى.', color: '#22c55e' },
-        { icon: Zap, titleEn: 'Speed & Quality', titleAr: 'السرعة والجودة', descEn: 'Enterprise-grade results in seconds, not hours.', descAr: 'نتائج بمستوى المؤسسات في ثوانٍ وليس ساعات.', color: '#3b82f6' },
+    // Every number here is a count of something in the codebase.
+    const facts = [
+        { num: '12', en: 'Specialised engines', ar: 'محرّك متخصص' },
+        { num: '31', en: 'Visual styles', ar: 'أسلوب بصري' },
+        { num: '23', en: 'Content genres', ar: 'نوع محتوى' },
+        { num: '16', en: 'Character types', ar: 'نوع شخصية' },
     ];
 
-    const stats = [
-        { num: '10K+', labelEn: 'Active Users', labelAr: 'مستخدم نشط' },
-        { num: '500K+', labelEn: 'Prompts Generated', labelAr: 'برومبت تم توليده' },
-        { num: '50+', labelEn: 'Countries', labelAr: 'دولة' },
-        { num: '99.9%', labelEn: 'Uptime', labelAr: 'وقت التشغيل' },
+    const values = [
+        {
+            icon: ShieldCheck,
+            titleEn: 'Consistency over volume', titleAr: 'الثبات قبل الكم',
+            descEn: 'One visual descriptor repeats across every shot, and an audit flags drift before you render.',
+            descAr: 'وصف بصري واحد بيتكرر في كل لقطة، ومُدقِّق بينبّهك على أي انحراف قبل ما تولّد.',
+        },
+        {
+            icon: Sparkles,
+            titleEn: 'Arabic as a first language', titleAr: 'العربية لغة أصلية',
+            descEn: 'Dialect engines for Egyptian, Gulf, Levantine and more — not translated English.',
+            descAr: 'محركات لهجات مصرية وخليجية وشامية وغيرها — مش ترجمة من الإنجليزي.',
+        },
+        {
+            icon: Target,
+            titleEn: 'Built for production', titleAr: 'مبني للإنتاج',
+            descEn: 'Output is a shot list with prompts, negatives, dialogue and audio notes — not a paragraph.',
+            descAr: 'المخرجات لوحة مشاهد ببرومبتات وnegatives وحوار وملاحظات صوت — مش فقرة كلام.',
+        },
+        {
+            icon: Zap,
+            titleEn: 'Your key stays server-side', titleAr: 'مفتاحك مايخرجش من السيرفر',
+            descEn: 'The provider key never reaches the browser, and credits are priced by the server.',
+            descAr: 'مفتاح المزوّد عمره ما بيوصل للمتصفح، والرصيد بيتحسب على السيرفر.',
+        },
     ];
 
     return (
-        <div className="w-full max-w-4xl mx-auto pb-10" dir={isRTL ? 'rtl' : 'ltr'}>
-            {/* Hero */}
-            <div className="text-center mb-10">
-                <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full mb-4"
-                    style={{ background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.2)' }}>
-                    <Globe className="w-3.5 h-3.5 text-indigo-400" />
-                    <span className="text-xs font-bold text-indigo-300">{isAr ? 'عنّا' : 'ABOUT US'}</span>
-                </div>
-                <h1 className="text-3xl md:text-4xl font-extrabold text-text1 mb-3">
-                    {isAr ? 'نصنع مستقبل المحتوى بالذكاء الاصطناعي' : 'Building the Future of AI Content'}
+        <div className="mx-auto w-full max-w-5xl pb-16">
+            <section className="ambient rounded-[28px] border border-border px-6 py-14 text-center md:py-20">
+                <span className="section-eyebrow rise" style={{ '--i': 0 }}>
+                    <Info className="h-3.5 w-3.5" aria-hidden="true" />
+                    {isAr ? 'عنّا' : 'About'}
+                </span>
+                <h1 className="rise mt-6 text-[clamp(1.875rem,1.4rem+2.4vw,3rem)] font-extrabold leading-[1.05] tracking-[-0.03em] text-text1" style={{ '--i': 1 }}>
+                    {isAr ? 'محرّك برومبتات' : 'A prompt engine'}
+                    <br />
+                    <span className="brand-text">{isAr ? 'مبني للعربية' : 'built for Arabic'}</span>
                 </h1>
-                <p className="text-sm text-zinc-400 max-w-lg mx-auto">
+                <p className="section-sub rise mx-auto mt-5" style={{ '--i': 2 }}>
                     {isAr
-                        ? 'Kemo Engine هي منصة متكاملة لإنشاء المحتوى بالذكاء الاصطناعي — من الفكرة إلى الإنتاج.'
-                        : 'Kemo Engine is an all-in-one AI content creation platform — from idea to production.'}
+                        ? 'Kemo Engine بيحوّل فكرة سطر واحد لمخطط إنتاج كامل — سيناريو ومشاهد وشخصيات وبرومبتات صور، بثبات في الشخصية والأسلوب.'
+                        : 'Kemo Engine turns a one-line idea into a full production blueprint — script, scenes, characters and image prompts, with the character and style held steady.'}
                 </p>
-            </div>
+            </section>
 
-            {/* Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-10">
-                {stats.map((s, i) => (
-                    <div key={i} className="text-center p-4 rounded-xl" style={{ background: 'var(--overlay-2)', border: '1px solid var(--border-color)' }}>
-                        <p className="text-2xl font-extrabold bg-gradient-to-r from-indigo-400 to-violet-400 bg-clip-text text-transparent">{s.num}</p>
-                        <p className="text-xs text-zinc-500 mt-1">{isAr ? s.labelAr : s.labelEn}</p>
+            <section className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
+                {facts.map((f, i) => (
+                    <div key={f.en} className="surface-card rise p-5 text-center" style={{ '--i': i }}>
+                        <p className="text-3xl font-extrabold tabular-nums text-text1">{f.num}</p>
+                        <p className="mt-1 text-xs text-muted">{isAr ? f.ar : f.en}</p>
                     </div>
                 ))}
-            </div>
+            </section>
 
-            {/* Values */}
-            <h2 className={`text-lg font-bold text-text1 mb-4 ${isRTL ? 'text-right' : ''}`}>
-                {isAr ? 'قيمنا' : 'Our Values'}
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-10">
-                {values.map((v, i) => (
-                    <div key={i} className={`flex items-start gap-3 p-4 rounded-xl transition-all hover:translate-y-[-2px] ${isRTL ? 'flex-row-reverse text-right' : ''}`}
-                        style={{ background: `${v.color}08`, border: `1px solid ${v.color}15` }}>
-                        <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
-                            style={{ background: `${v.color}15` }}>
-                            <v.icon className="w-5 h-5" style={{ color: v.color }} />
+            <section className="mt-10" aria-labelledby="values-heading">
+                <h2 id="values-heading" className="section-title">{isAr ? 'مبادئنا' : 'What guides it'}</h2>
+                <div className="mt-6 grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
+                    {values.map((v, i) => (
+                        <div key={v.titleEn} className="surface-card rise p-6" style={{ '--i': i }}>
+                            <span
+                                className="mb-4 inline-flex h-10 w-10 items-center justify-center rounded-xl"
+                                style={{ background: 'var(--brand-tint)', border: '1px solid var(--brand-border)' }}
+                            >
+                                <v.icon className="h-5 w-5" style={{ color: 'var(--brand-fg)' }} aria-hidden="true" />
+                            </span>
+                            <h3 className="text-base font-semibold text-text1">{isAr ? v.titleAr : v.titleEn}</h3>
+                            <p className="mt-2 text-sm leading-relaxed text-muted">{isAr ? v.descAr : v.descEn}</p>
                         </div>
-                        <div>
-                            <h3 className="text-sm font-bold text-text1 mb-1">{isAr ? v.titleAr : v.titleEn}</h3>
-                            <p className="text-xs text-zinc-400 leading-relaxed">{isAr ? v.descAr : v.descEn}</p>
-                        </div>
-                    </div>
-                ))}
-            </div>
+                    ))}
+                </div>
+            </section>
 
-            {/* Team CTA */}
-            <div className="text-center p-8 rounded-2xl" style={{ background: 'linear-gradient(135deg, rgba(99,102,241,0.08), rgba(139,92,246,0.05))', border: '1px solid rgba(99,102,241,0.15)' }}>
-                <Award className="w-8 h-8 text-indigo-400 mx-auto mb-3" />
-                <h3 className="text-base font-bold text-text1 mb-2">
-                    {isAr ? 'انضم إلى فريقنا' : 'Join Our Team'}
-                </h3>
-                <p className="text-xs text-zinc-400 mb-4 max-w-sm mx-auto">
-                    {isAr ? 'نبحث دائماً عن مواهب استثنائية في الهندسة والتصميم والذكاء الاصطناعي.' : 'We\'re always looking for exceptional talent in engineering, design, and AI.'}
+            {/* The old CTA here was a "View Open Positions" button wired to
+                nothing. Replaced with an action that actually goes somewhere. */}
+            <section className="surface-card mt-10 p-8 text-center">
+                <h2 className="text-xl font-bold tracking-tight text-text1">
+                    {isAr ? 'عندك سؤال؟' : 'Questions?'}
+                </h2>
+                <p className="section-sub mx-auto mt-2">
+                    {isAr ? 'ابعتلنا وهنرد عليك.' : 'Send us a message and we will get back to you.'}
                 </p>
-                <button className="px-5 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-indigo-500 to-violet-600 hover:opacity-90 transition-opacity">
-                    {isAr ? 'تصفح الوظائف' : 'View Open Positions'}
+                <button
+                    onClick={() => setActiveTab('contact')}
+                    className="press focus-ring touch-target mt-6 inline-flex items-center justify-center rounded-xl px-6 py-3 text-sm font-bold on-brand text-white transition-opacity hover:opacity-90"
+                    style={{ background: 'linear-gradient(135deg, var(--cta-1), var(--cta-2))' }}
+                >
+                    {isAr ? 'تواصل معنا' : 'Contact us'}
                 </button>
-            </div>
+            </section>
         </div>
     );
 };

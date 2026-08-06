@@ -12,7 +12,7 @@ const USER_COLUMNS = `
     credits_remaining, credits_used, is_admin, created_at
 `;
 
-function readToken(req) {
+export function readToken(req) {
     const fromCookie = req.cookies?.[SESSION_COOKIE];
     if (fromCookie) return fromCookie;
 

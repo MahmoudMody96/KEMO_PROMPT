@@ -20,7 +20,7 @@ const VisualSelector = ({ options = [], value, onChange, isRTL }) => (
     <div className="flex flex-wrap gap-1.5" dir={isRTL ? 'rtl' : 'ltr'}>
         {options.map((opt) => {
             const v = opt?.value || opt; const l = opt?.label || opt; return (
-                <button key={v} onClick={() => onChange?.(v)} className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all duration-200 border ${value === v ? 'bg-primary/20 border-primary/40 text-primary shadow-sm shadow-primary/10' : 'bg-bg1/50 border-border text-text2 hover:bg-bg1 hover:text-text1'}`}>{l}</button>
+                <button key={v} onClick={() => onChange?.(v)} className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all duration-200 border ${value === v ? 'bg-[var(--brand-tint)] border-[var(--brand-border-strong)] text-[var(--brand-fg)] shadow-sm' : 'bg-bg1/50 border-border text-text2 hover:bg-bg1 hover:text-text1'}`}>{l}</button>
             );
         })}
     </div>
@@ -37,10 +37,12 @@ const FormField = ({ label, icon: Icon, children, isRTL, helpText }) => (
     </div>
 );
 
-const TextInput = ({ value, onChange, placeholder, type = 'text' }) => (
+const TextInput = ({ value, onChange, placeholder, type = 'text', min, max }) => (
     <input type={type} value={value || ''} onChange={(e) => onChange?.(e.target.value)} placeholder={placeholder}
         className="h-9 w-full rounded-lg bg-bg1 border border-border dark:border-white/[0.08] px-3 text-[13px] text-text1 placeholder-muted outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/25"
-        dir="auto" min={type === 'number' ? 1 : undefined} max={type === 'number' ? 20 : undefined} />
+        dir="auto"
+        min={type === 'number' ? (min ?? 1) : undefined}
+        max={type === 'number' ? (max ?? 20) : undefined} />
 );
 
 const TextArea = ({ value, onChange, placeholder, rows = 3 }) => (
@@ -77,10 +79,29 @@ const Select = ({ value = '', onChange, options = [], isRTL, placeholder }) => {
 
     return (
         <div className="relative">
-            <div ref={triggerRef} onClick={() => setIsOpen(!isOpen)} className={`h-9 w-full rounded-lg bg-bg1 border px-3 text-[13px] flex items-center justify-between cursor-pointer transition-all ${isOpen ? 'border-primary ring-2 ring-primary/25' : 'border-border dark:border-white/[0.08]'}`} dir="auto">
+            {/* A real <button> with combobox semantics. This was a <div onClick>
+                with no tabIndex and no key handling, which made every dropdown in
+                the generator form — genre, style, character, language, duration,
+                tone — unreachable by keyboard entirely. */}
+            <button
+                type="button"
+                ref={triggerRef}
+                onClick={() => setIsOpen(!isOpen)}
+                onKeyDown={(e) => {
+                    if (e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setIsOpen(true);
+                    }
+                }}
+                role="combobox"
+                aria-expanded={isOpen}
+                aria-haspopup="listbox"
+                className={`h-9 w-full rounded-lg bg-bg1 border px-3 text-[13px] flex items-center justify-between cursor-pointer transition-all text-start ${isOpen ? 'border-primary ring-2 ring-primary/25' : 'border-border dark:border-white/[0.08]'}`}
+                dir="auto"
+            >
                 <span className={`truncate ${!getLabel() && placeholder ? 'text-muted' : 'text-text1'}`}>{getLabel() || placeholder || (options[0]?.label || (isRTL ? 'اختر...' : 'Select...'))}</span>
                 <ChevronDown className={`w-3.5 h-3.5 text-muted flex-shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
-            </div>
+            </button>
             {isOpen && ReactDOM.createPortal(<><div className="fixed inset-0 z-[9990]" onClick={() => setIsOpen(false)} />
                 <div className="fixed z-[9991] rounded-xl max-h-[320px] overflow-hidden flex flex-col animate-scale-in" style={{ top: menuPos.top, left: menuPos.left, width: menuPos.width, background: 'var(--dropdown-bg)', border: '1px solid var(--dropdown-border)', boxShadow: 'var(--dropdown-shadow)', backdropFilter: 'blur(6px)' }}>
                     {showSearch && (
@@ -88,23 +109,23 @@ const Select = ({ value = '', onChange, options = [], isRTL, placeholder }) => {
                             <input ref={searchRef} type="text" value={filter} onChange={(e) => setFilter(e.target.value)} placeholder={isRTL ? '🔍 بحث...' : '🔍 Search...'} className="w-full h-7 px-2.5 rounded-md text-xs text-text1 placeholder-muted outline-none" style={{ background: 'var(--overlay-light)', border: '1px solid var(--overlay-border)' }} dir="auto" />
                         </div>
                     )}
-                    <div className="overflow-y-auto p-1.5 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+                    <div className="overflow-y-auto p-1.5 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent" role="listbox">
                         {filteredOptions.length === 0 && <div className="px-3 py-4 text-xs text-muted text-center">{isRTL ? 'لا توجد نتائج' : 'No results'}</div>}
                         {filteredOptions.map((opt, idx) => {
                             if (opt.group && opt.items) {
                                 const gc = groupGradients[idx % groupGradients.length]; return (
                                     <div key={idx} className={`mb-2 rounded-lg border border-border overflow-hidden bg-gradient-to-br ${gc}`}>
                                         <div className="px-3 py-1.5 text-[10px] font-bold text-muted uppercase tracking-wider bg-black/10 dark:bg-black/20 border-b border-border">{opt.group}</div>
-                                        <div className="p-1">{opt.items.map((item, i) => (
-                                            <div key={i} onClick={() => handleSelect(item.value)} className={`px-3 py-2 text-sm rounded-md cursor-pointer transition-all duration-150 flex items-center justify-between ${value === item.value ? 'bg-primary/20 text-primary font-semibold' : 'text-text2 hover:bg-[rgba(108,92,255,0.12)] hover:text-text1'}`}>
+                                        <div className="p-1" role="group" aria-label={opt.group}>{opt.items.map((item, i) => (
+                                            <button type="button" key={i} role="option" aria-selected={value === item.value} onClick={() => handleSelect(item.value)} className={`w-full text-start px-3 py-2 text-sm rounded-md cursor-pointer transition-all duration-150 flex items-center justify-between ${value === item.value ? 'bg-primary/20 text-[var(--brand-fg)] font-semibold' : 'text-text2 hover:bg-[rgba(108,92,255,0.12)] hover:text-text1'}`}>
                                                 <span>{item.label || item.value}</span>{value === item.value && <Check className="w-3.5 h-3.5" />}
-                                            </div>
+                                            </button>
                                         ))}</div>
                                     </div>);
                             }
-                            return (<div key={idx} onClick={() => handleSelect(opt.value)} className={`px-3 py-2.5 text-sm rounded-lg cursor-pointer transition-all duration-150 flex items-center justify-between mb-1 ${value === opt.value ? 'bg-primary/20 text-primary font-semibold' : 'text-text2 hover:bg-[rgba(108,92,255,0.12)] hover:text-text1'}`}>
+                            return (<button type="button" key={idx} role="option" aria-selected={value === opt.value} onClick={() => handleSelect(opt.value)} className={`w-full text-start px-3 py-2.5 text-sm rounded-lg cursor-pointer transition-all duration-150 flex items-center justify-between mb-1 ${value === opt.value ? 'bg-primary/20 text-[var(--brand-fg)] font-semibold' : 'text-text2 hover:bg-[rgba(108,92,255,0.12)] hover:text-text1'}`}>
                                 <span>{opt.label || opt.value}</span>{value === opt.value && <Check className="w-3.5 h-3.5" />}
-                            </div>);
+                            </button>);
                         })}
                     </div>
                 </div></>, document.body)}

@@ -1,5 +1,4 @@
 ﻿// NEXUS ENGINE - Prompt Architect (engineer, refine, simulate)
-import { TEXT_MODEL } from '../config.js';
 import { callOpenRouter } from '../openrouter.js';
 import { getStrategy, autoDetectStrategy } from '../promptStrategies.js';
 
@@ -52,7 +51,7 @@ RULES:
 OUTPUT THE REFINED PROMPT NOW:`;
 
     try {
-        const result = await callOpenRouter(refinementPrompt, TEXT_MODEL, true, 4000, null, null, 'architect');
+        const result = await callOpenRouter(refinementPrompt, null, true, 4000, null, null, 'architect');
         if (!result) return { error: 'Refinement returned empty' };
         return { refined_prompt: typeof result === 'string' ? result : result.content || JSON.stringify(result) };
     } catch (err) {
@@ -80,7 +79,7 @@ SIMULATION RULES:
 BEGIN SIMULATED RESPONSE:`;
 
     try {
-        const result = await callOpenRouter(simulationPrompt, TEXT_MODEL, true, 4000, null, null, 'architect');
+        const result = await callOpenRouter(simulationPrompt, null, true, 4000, null, null, 'architect');
         if (!result) return { error: 'Simulation returned empty' };
         return { simulation: typeof result === 'string' ? result : result.content || JSON.stringify(result) };
     } catch (err) {
@@ -124,7 +123,7 @@ Your mission: Compile the user's request into a high-fidelity System Prompt.
 
 *** OUTPUT: A complete, production - ready system prompt. *** `;
 
-    return callOpenRouter(systemPrompt, TEXT_MODEL, true, 4000, null, null, 'architect');
+    return callOpenRouter(systemPrompt, null, true, 4000, null, null, 'architect');
 }
 
 // NEXUS v2.5: Systemic Engine - Self-Healing, Template-Ready Prompts
@@ -594,7 +593,7 @@ ${isAr
 === EXECUTE ===
 Output ONLY the prompt. No preamble. No explanation. Do NOT include any reasoning/thinking methodology section. START NOW.`;
 
-    const aiResult = await callOpenRouter(systemPrompt, TEXT_MODEL, true, 4000, null, null, 'architect');
+    const aiResult = await callOpenRouter(systemPrompt, null, true, 4000, null, null, 'architect');
 
     // Post-inject the full reasoning strategy (never trust AI to copy it verbatim)
     if (reasoningStrategy.pattern && reasoningStrategy.pattern.trim()) {
@@ -802,5 +801,5 @@ The output must be READY TO COPY-PASTE directly into any AI.
 
 *** COMPILE THE MASTER PROMPT NOW ***`;
 
-    return callOpenRouter(systemPrompt, TEXT_MODEL, true, 4000, null, null, 'architect');
+    return callOpenRouter(systemPrompt, null, true, 4000, null, null, 'architect');
 }

@@ -28,7 +28,7 @@ const GeneratorSection = () => {
                         </div>
                         <div>
                             <h2 className="text-sm md:text-base font-bold text-text1">{isRTL ? 'استوديو الإبداع' : 'Creative Studio'}</h2>
-                            <p className="text-[11px] text-zinc-500">{isRTL ? 'صمّم سيناريو فيديو احترافي بالذكاء الاصطناعي' : 'Design professional video blueprints with AI'}</p>
+                            <p className="text-[11px] text-muted">{isRTL ? 'صمّم سيناريو فيديو احترافي بالذكاء الاصطناعي' : 'Design professional video blueprints with AI'}</p>
                         </div>
                     </div>
                 </div>

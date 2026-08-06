@@ -16,7 +16,7 @@ const VARIANTS = {
 };
 
 const PricingPage = () => {
-    const { language, isRTL } = useAppContext();
+    const { language } = useAppContext();
     const { user } = useAuth();
     const isAr = language === 'ar';
     const [loadingPlan, setLoadingPlan] = useState(null);
@@ -161,137 +161,125 @@ const PricingPage = () => {
     const currentPlan = user?.plan || 'free';
 
     return (
-        <div className="w-full max-w-6xl mx-auto pb-10" dir={isRTL ? 'rtl' : 'ltr'}>
-            {/* Hero */}
-            <div className="text-center mb-10">
-                <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full mb-4"
-                    style={{ background: 'linear-gradient(135deg, rgba(245,158,11,0.12), rgba(139,92,246,0.08))', border: '1px solid rgba(245,158,11,0.2)' }}>
-                    <Crown className="w-3.5 h-3.5 text-amber-400" />
-                    <span className="text-xs font-bold text-amber-300">{isAr ? 'خطط الأسعار' : 'PRICING'}</span>
-                </div>
-                <h1 className="text-3xl md:text-4xl font-extrabold text-white mb-3">
-                    {isAr ? 'اختر الخطة المناسبة لك' : 'Choose the Right Plan'}
+        <div className="mx-auto w-full max-w-6xl pb-16">
+            <section className="ambient rounded-[28px] border border-border px-6 py-14 text-center md:py-16">
+                <span className="section-eyebrow rise" style={{ '--i': 0 }}>
+                    <Crown className="h-3.5 w-3.5" aria-hidden="true" />
+                    {isAr ? 'الأسعار' : 'Pricing'}
+                </span>
+                <h1 className="rise mt-6 text-[clamp(1.875rem,1.4rem+2.4vw,3rem)] font-extrabold leading-[1.05] tracking-[-0.03em] text-text1" style={{ '--i': 1 }}>
+                    {isAr ? 'ابدأ مجاناً،' : 'Start free,'}
+                    <br />
+                    <span className="brand-text">{isAr ? 'وارقِ لما تحتاج' : 'upgrade when you need to'}</span>
                 </h1>
-                <p className="text-sm text-zinc-400 max-w-md mx-auto mb-6">
-                    {isAr ? 'ابدأ مجاناً وقم بالترقية متى احتجت لمميزات أكثر' : 'Start free and upgrade when you need more power'}
+                <p className="section-sub rise mx-auto mt-5" style={{ '--i': 2 }}>
+                    {isAr
+                        ? 'كل باقة بترصدلك رصيد شهري. الرصيد بيتخصم حسب العملية — والتوليد الفاشل بيترد.'
+                        : 'Each plan gives you monthly credits. Credits are charged per action, and a failed generation is refunded.'}
                 </p>
 
-                {/* Current plan badge */}
                 {user && (
-                    <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full mb-4"
-                        style={{ background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.2)' }}>
-                        <span className="text-xs text-indigo-300">
-                            {isAr ? 'خطتك الحالية:' : 'Current plan:'}{' '}
-                            <strong className="text-indigo-200 uppercase">{currentPlan}</strong>
-                        </span>
-                    </div>
+                    <p className="mt-6 inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs"
+                        style={{ background: 'var(--brand-tint)', border: '1px solid var(--brand-border)', color: 'var(--brand-fg)' }}>
+                        {isAr ? 'خطتك الحالية:' : 'Current plan:'}{' '}
+                        <strong className="uppercase">{currentPlan}</strong>
+                    </p>
                 )}
 
-                {/* Error banner */}
                 {error && (
-                    <div className="inline-block px-4 py-2 rounded-lg text-xs text-red-300 mb-4"
-                        style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)' }}>
+                    <p role="alert" className="mx-auto mt-4 inline-block rounded-lg px-4 py-2 text-xs"
+                        style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.28)', color: '#ef4444' }}>
                         {error}
-                    </div>
+                    </p>
                 )}
-            </div>
+            </section>
 
-            {/* Plans Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {plans.map((plan) => {
+            {/* Plans */}
+            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 md:gap-4">
+                {plans.map((plan, i) => {
                     const price = plan.priceMonthly;
                     const PlanIcon = plan.icon;
                     const isCurrentPlan = currentPlan === plan.id;
                     const isLoading = loadingPlan === plan.id;
+                    const disabled = !plan.lemonVariant || isCurrentPlan || isLoading;
 
                     return (
-                        <div key={plan.id}
-                            className={`relative rounded-2xl p-5 transition-all duration-300 hover:translate-y-[-4px] flex flex-col ${plan.popular ? 'ring-2' : ''}`}
-                            style={{
-                                background: plan.popular ? `linear-gradient(145deg, ${plan.color}10, var(--bg-surface))` : 'var(--overlay-2)',
-                                border: `1px solid ${plan.popular ? `${plan.color}40` : 'var(--border-color)'}`,
-                                boxShadow: plan.popular ? `0 8px 40px ${plan.color}15` : 'none',
-                                ringColor: plan.popular ? `${plan.color}40` : 'transparent',
-                            }}
+                        <div
+                            key={plan.id}
+                            style={{ '--accent': plan.color, '--i': i }}
+                            className={`surface-card rise relative flex flex-col p-6 ${plan.popular ? 'md:-mt-2 md:mb-2' : ''}`}
                         >
-                            {/* Popular badge */}
                             {plan.popular && (
-                                <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                                    <span className="px-4 py-1 rounded-full text-[11px] font-bold text-white"
-                                        style={{ background: `linear-gradient(135deg, ${plan.color}, ${plan.color}cc)`, boxShadow: `0 4px 15px ${plan.color}40` }}>
-                                        <Star className="w-3 h-3 inline mr-1" fill="currentColor" />
-                                        {isAr ? 'الأكثر شعبية' : 'MOST POPULAR'}
-                                    </span>
-                                </div>
+                                <span
+                                    className="absolute -top-3 start-6 rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wide on-brand text-white"
+                                    style={{ background: 'linear-gradient(135deg, var(--cta-1), var(--cta-2))' }}
+                                >
+                                    {isAr ? 'الأكثر اختياراً' : 'Most picked'}
+                                </span>
                             )}
 
-                            {/* Plan Header */}
-                            <div className={`mb-4 ${plan.popular ? 'pt-2' : ''}`}>
-                                <div className={`flex items-center gap-2 mb-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
-                                    <div className="w-8 h-8 rounded-lg flex items-center justify-center"
-                                        style={{ background: `${plan.color}15`, border: `1px solid ${plan.color}25` }}>
-                                        <PlanIcon className="w-4 h-4" style={{ color: plan.color }} />
-                                    </div>
-                                    <h3 className="text-base font-bold text-white">{isAr ? plan.nameAr : plan.nameEn}</h3>
-                                </div>
-                                <p className="text-xs text-zinc-500">{isAr ? plan.descAr : plan.descEn}</p>
-                            </div>
+                            <span
+                                className="mb-4 inline-flex h-10 w-10 items-center justify-center rounded-xl"
+                                style={{
+                                    background: 'color-mix(in srgb, var(--accent) 14%, transparent)',
+                                    border: '1px solid color-mix(in srgb, var(--accent) 26%, transparent)',
+                                }}
+                            >
+                                <PlanIcon className="h-5 w-5" style={{ color: 'var(--accent)' }} aria-hidden="true" />
+                            </span>
 
-                            {/* Price */}
-                            <div className="mb-5">
-                                <div className={`flex items-baseline gap-1 ${isRTL ? 'flex-row-reverse' : ''}`}>
-                                    <span className="text-3xl font-extrabold text-white">
-                                        ${price}
-                                    </span>
-                                    {price > 0 && (
-                                        <span className="text-xs text-zinc-500">/ {isAr ? 'شهر' : 'mo'}</span>
-                                    )}
-                                </div>
-                                {price === 0 && (
-                                    <span className="text-xs text-zinc-500">{isAr ? 'مجاناً للأبد' : 'Free forever'}</span>
-                                )}
-                            </div>
+                            <h2 className="text-base font-bold text-text1">{isAr ? plan.nameAr : plan.nameEn}</h2>
+                            <p className="mt-1 text-xs text-muted">{isAr ? plan.descAr : plan.descEn}</p>
 
-                            {/* Features */}
-                            <div className="flex-1 space-y-2 mb-5">
-                                {plan.features.map((f, i) => (
-                                    <div key={i} className={`flex items-center gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
-                                        {f.included ? (
-                                            <Check className="w-3.5 h-3.5 flex-shrink-0 text-emerald-400" />
-                                        ) : (
-                                            <X className="w-3.5 h-3.5 flex-shrink-0 text-zinc-600" />
-                                        )}
-                                        <span className={`text-xs ${f.included ? 'text-zinc-300' : 'text-zinc-600'}`}>
+                            <p className="mt-5 flex items-baseline gap-1">
+                                <span className="text-4xl font-extrabold tabular-nums text-text1">${price}</span>
+                                {price > 0 && <span className="text-xs text-muted">/ {isAr ? 'شهر' : 'mo'}</span>}
+                            </p>
+                            {price === 0 && (
+                                <span className="mt-1 text-xs text-muted">{isAr ? 'مجاناً للأبد' : 'Free forever'}</span>
+                            )}
+
+                            <ul className="mt-6 flex-1 space-y-2.5">
+                                {plan.features.map((f, fi) => (
+                                    <li key={fi} className="flex items-start gap-2">
+                                        {f.included
+                                            ? <Check className="mt-0.5 h-3.5 w-3.5 shrink-0" style={{ color: 'var(--accent)' }} aria-hidden="true" />
+                                            : <X className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted" aria-hidden="true" />}
+                                        <span className={`text-xs leading-relaxed ${f.included ? 'text-text2' : 'text-muted line-through'}`}>
                                             {isAr ? f.ar : f.en}
                                         </span>
-                                    </div>
+                                    </li>
                                 ))}
-                            </div>
+                            </ul>
 
-                            {/* CTA Button */}
                             <button
                                 onClick={() => plan.lemonVariant && handleCheckout(plan.lemonVariant)}
-                                disabled={!plan.lemonVariant || isCurrentPlan || isLoading}
-                                className={`w-full py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${isRTL ? 'flex-row-reverse' : ''} ${(!plan.lemonVariant || isCurrentPlan) ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] cursor-pointer'}`}
-                                style={{
-                                    background: plan.popular
-                                        ? `linear-gradient(135deg, ${plan.color}, ${plan.color}cc)`
-                                        : `${plan.color}15`,
-                                    color: plan.popular ? '#fff' : plan.color,
-                                    border: `1px solid ${plan.popular ? 'transparent' : `${plan.color}25`}`,
-                                }}
+                                disabled={disabled}
+                                // accent-text rather than an inline `color: var(--accent)`:
+                                // the raw accent lands at 4.16:1 on the tinted button
+                                // background, under the 4.5:1 minimum. The utility mixes
+                                // it toward ink in light mode and toward white on dark.
+                                className={`press focus-ring touch-target mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold transition-opacity ${disabled ? 'cursor-not-allowed opacity-50' : 'hover:opacity-90'} ${plan.popular && !disabled ? '' : 'accent-text'}`}
+                                style={plan.popular && !disabled
+                                    ? { background: 'linear-gradient(135deg, var(--cta-1), var(--cta-2))', color: '#fff' }
+                                    : {
+                                        background: 'color-mix(in srgb, var(--accent) 12%, transparent)',
+                                        border: '1px solid color-mix(in srgb, var(--accent) 26%, transparent)',
+                                    }}
                             >
                                 {isLoading ? (
                                     <>
-                                        <Loader2 className="w-4 h-4 animate-spin" />
-                                        {isAr ? 'جاري التحميل...' : 'Loading...'}
+                                        <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                                        {isAr ? 'جارٍ التحويل…' : 'Redirecting…'}
                                     </>
                                 ) : isCurrentPlan ? (
-                                    isAr ? '✓ خطتك الحالية' : '✓ Current Plan'
+                                    isAr ? 'خطتك الحالية' : 'Current plan'
+                                ) : !plan.lemonVariant ? (
+                                    isAr ? 'غير متاحة' : 'Unavailable'
                                 ) : (
                                     <>
                                         {isAr ? plan.ctaAr : plan.ctaEn}
-                                        <ExternalLink className="w-3.5 h-3.5" />
+                                        <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
                                     </>
                                 )}
                             </button>
@@ -300,17 +288,29 @@ const PricingPage = () => {
                 })}
             </div>
 
-            {/* Trust section */}
-            <div className="mt-10 text-center">
-                <p className="text-xs text-zinc-500">
+            {/* What a credit buys — concrete, and matches server/src/lib/credits.js */}
+            <section className="surface-card mt-4 p-6">
+                <h2 className="text-base font-bold text-text1">{isAr ? 'الرصيد بيتصرف إزاي' : 'What a credit costs'}</h2>
+                <ul className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+                    {[
+                        { en: 'Brainstorm', ar: 'عصف ذهني', c: 1 },
+                        { en: 'Trend search', ar: 'بحث ترندات', c: 1 },
+                        { en: 'Prompt architect', ar: 'مهندس البرومبت', c: 2 },
+                        { en: 'Extract', ar: 'استخراج', c: 2 },
+                        { en: 'Full blueprint', ar: 'مخطط كامل', c: 3 },
+                    ].map((row) => (
+                        <li key={row.en} className="rounded-xl p-3 text-center" style={{ background: 'var(--overlay-3)' }}>
+                            <p className="text-xl font-bold tabular-nums text-text1">{row.c}</p>
+                            <p className="mt-0.5 text-[11px] text-muted">{isAr ? row.ar : row.en}</p>
+                        </li>
+                    ))}
+                </ul>
+                <p className="mt-4 text-xs text-muted">
                     {isAr
-                        ? '✨ جميع الخطط تشمل تحديثات مجانية • بدون عقود • يمكنك الإلغاء في أي وقت'
-                        : '✨ All plans include free updates • No contracts • Cancel anytime'}
+                        ? 'لو التوليد فشل، الرصيد بيرجع تلقائياً. الدفع عبر LemonSqueezy، وتقدر تلغي في أي وقت.'
+                        : 'A failed generation is refunded automatically. Payments run through LemonSqueezy, and you can cancel any time.'}
                 </p>
-                <p className="text-[10px] text-zinc-600 mt-2">
-                    {isAr ? '🔒 الدفع الآمن عبر LemonSqueezy' : '🔒 Secure payments via LemonSqueezy'}
-                </p>
-            </div>
+            </section>
         </div>
     );
 };

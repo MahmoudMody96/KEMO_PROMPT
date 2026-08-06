@@ -10,10 +10,14 @@ import { requireAuth } from '../auth/middleware.js';
 const router = express.Router();
 
 const MAX_LIMIT = 100;
+// credits_used is deliberately NOT here: it is a billing-named column and the
+// client has no business writing it. Nothing aggregates projects.credits_used
+// today, but leaving a user-writable accounting field in a mass-assignment
+// allowlist is a landmine for whatever reads it next.
 const EDITABLE = [
     'title', 'core_idea', 'genre', 'video_style', 'character_type', 'specific_object',
     'voice_tone', 'aspect_ratio', 'num_characters', 'num_scenes', 'duration',
-    'generated_idea', 'generated_blueprint', 'status', 'credits_used', 'is_favorite',
+    'generated_idea', 'generated_blueprint', 'status', 'is_favorite',
 ];
 
 router.use(requireAuth);
@@ -21,7 +25,7 @@ router.use(requireAuth);
 // --- GET /api/projects -------------------------------------------------
 router.get('/', async (req, res) => {
     try {
-        const limit = Math.min(parseInt(req.query.limit, 10) || 20, MAX_LIMIT);
+        const limit = Math.max(1, Math.min(parseInt(req.query.limit, 10) || 20, MAX_LIMIT));
         const { rows } = await query(
             `SELECT * FROM projects WHERE user_id = $1
              ORDER BY created_at DESC LIMIT $2`,

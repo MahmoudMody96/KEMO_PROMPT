@@ -20,9 +20,52 @@ async function ensureLedger(client) {
     `);
 }
 
+// Arbitrary but fixed: every container must pick the same number for the lock
+// to serialise them against each other.
+const MIGRATION_LOCK_ID = 727212;
+
+const isNoise = (line) => {
+    const t = line.trim();
+    return t === '' || t.startsWith('--');
+};
+
+/**
+ * The migration files wrap themselves in BEGIN;/COMMIT;. Strip that outer pair
+ * so the statements join the transaction opened by the runner instead of
+ * committing on their own — otherwise the schema change and its ledger row
+ * cannot be made atomic.
+ *
+ * This scans from each end past comments and blank lines rather than anchoring
+ * a regex at position 0: both files open with a comment banner, so an anchored
+ * `^\s*BEGIN;` matches nothing and the strip silently does nothing at all.
+ *
+ * Only a standalone `BEGIN;` / `COMMIT;` line is removed, so the plpgsql
+ * BEGIN...END blocks inside function bodies are left untouched.
+ */
+function stripOuterTransaction(sql) {
+    const lines = sql.split(/\r?\n/);
+
+    let first = 0;
+    while (first < lines.length && isNoise(lines[first])) first++;
+    if (first < lines.length && /^BEGIN\s*;$/i.test(lines[first].trim())) lines[first] = '';
+
+    let last = lines.length - 1;
+    while (last >= 0 && isNoise(lines[last])) last--;
+    if (last >= 0 && /^COMMIT\s*;$/i.test(lines[last].trim())) lines[last] = '';
+
+    return lines.join('\n');
+}
+
 export async function runMigrations() {
     const client = await pool.connect();
+    let failure;
     try {
+        // Two containers booting together (rolling deploy, replicas > 1) would
+        // otherwise both read an empty ledger and both try to apply 001. The
+        // loser died on "relation already exists", which left the server up but
+        // answering 503 on every data route forever, with no retry.
+        await client.query('SELECT pg_advisory_lock($1)', [MIGRATION_LOCK_ID]);
+
         await ensureLedger(client);
 
         const { rows } = await client.query('SELECT name FROM schema_migrations');
@@ -39,16 +82,30 @@ export async function runMigrations() {
             const sql = await readFile(join(migrationsDir, file), 'utf8');
             console.log(`[MIGRATE] applying ${file}`);
 
-            // Each migration file manages its own BEGIN/COMMIT, so it is sent
-            // as one statement batch and either lands whole or not at all.
-            await client.query(sql);
-            await client.query('INSERT INTO schema_migrations (name) VALUES ($1)', [file]);
+            // The schema change and the ledger row commit together. Previously
+            // the file committed itself and the ledger insert followed
+            // separately, so a crash in between re-applied the migration on the
+            // next boot — which for 002 silently zeroed credits_used for every
+            // user who had ever been refunded.
+            await client.query('BEGIN');
+            try {
+                await client.query(stripOuterTransaction(sql));
+                await client.query('INSERT INTO schema_migrations (name) VALUES ($1)', [file]);
+                await client.query('COMMIT');
+            } catch (err) {
+                await client.query('ROLLBACK').catch(() => {});
+                throw err;
+            }
             count++;
         }
 
         console.log(count ? `[MIGRATE] applied ${count} migration(s)` : '[MIGRATE] schema up to date');
+    } catch (err) {
+        failure = err;
+        throw err;
     } finally {
-        client.release();
+        await client.query('SELECT pg_advisory_unlock($1)', [MIGRATION_LOCK_ID]).catch(() => {});
+        client.release(failure);
     }
 }
 
