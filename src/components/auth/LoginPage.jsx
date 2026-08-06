@@ -12,7 +12,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useAppContext } from '../../context/AppContext';
 import { Mail, Lock, User, ArrowRight, Loader2, ArrowLeft } from 'lucide-react';
-import Wordmark, { WordmarkMark } from '../ui/Wordmark';
+import Wordmark from '../ui/Wordmark';
 
 const LoginPage = () => {
     const { signIn, signUp, error: authError } = useAuth();
@@ -65,9 +65,8 @@ const LoginPage = () => {
 
                 <div className="surface-card p-7 md:p-8">
                     <div className="text-center">
-                        <WordmarkMark size={56} className="mx-auto" />
-                        <h1 className="mt-4">
-                            <Wordmark size="lg" />
+                        <h1>
+                            <Wordmark size="xl" />
                         </h1>
                         <p className="mt-1.5 text-sm text-muted">
                             {isSignUp

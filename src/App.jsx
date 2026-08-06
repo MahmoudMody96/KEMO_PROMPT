@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import HomePage from './components/home/HomePage';
 import CommandPalette from './components/ui/CommandPalette';
-import Wordmark, { WordmarkMark } from './components/ui/Wordmark';
+import Wordmark from './components/ui/Wordmark';
 import { PLANS } from './services/creditsService';
 import { useModal } from './lib/useModal';
 import { lazyWithRetry } from './lib/lazyWithRetry';
@@ -245,10 +245,16 @@ const Sidebar = ({ onNavClick }) => {
       className={`relative flex h-full flex-col bg-bg1 transition-[width] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${collapsed ? 'w-[76px]' : 'w-[248px]'}`}
       style={{ borderInlineEnd: '1px solid var(--border-color)' }}
     >
-      {/* Brand */}
+      {/* Brand.
+          Collapsed, the rail is 76px — too narrow for the full name, so it
+          shows just the gradient "Kemo". Cropping the wordmark keeps the mark
+          typographic instead of falling back to an icon badge. */}
       <div className="flex items-center gap-3 px-4 py-5">
-        <WordmarkMark size={36} />
-        {!collapsed && (
+        {collapsed ? (
+          <span className="brand-text text-base font-extrabold tracking-tight leading-none">
+            Kemo
+          </span>
+        ) : (
           <div className="min-w-0">
             <p className="truncate leading-tight">
               <Wordmark size="sm" />
@@ -729,7 +735,7 @@ const AuthGate = () => {
       <div className="flex items-center justify-center min-h-screen bg-bg0">
         <div className="text-center">
           <div className="mb-4 animate-pulse">
-            <Wordmark size="lg" withMark />
+            <Wordmark size="lg" />
           </div>
           <p className="text-text2">Loading...</p>
         </div>

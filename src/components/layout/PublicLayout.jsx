@@ -9,7 +9,7 @@
 import React from 'react';
 import { useAppContext } from '../../context/AppContext';
 import { Globe, Sun, Moon } from 'lucide-react';
-import Wordmark, { WordmarkMark } from '../ui/Wordmark';
+import Wordmark from '../ui/Wordmark';
 
 const PublicLayout = ({ children, theme, onToggleTheme }) => {
     const { isRTL, language, toggleLanguage, setActiveTab, activeTab } = useAppContext();
@@ -34,8 +34,7 @@ const PublicLayout = ({ children, theme, onToggleTheme }) => {
                         className="focus-ring flex items-center gap-2.5 rounded-lg"
                         aria-label={isRTL ? 'الصفحة الرئيسية' : 'Home'}
                     >
-                        <WordmarkMark size={32} />
-                        <Wordmark size="sm" />
+                        <Wordmark size="md" />
                     </button>
 
                     <nav className="ms-auto hidden items-center gap-1 md:flex" aria-label={isRTL ? 'روابط' : 'Site'}>
