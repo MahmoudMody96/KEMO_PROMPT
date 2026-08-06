@@ -73,7 +73,7 @@ router.post('/generate', requireAuth, aiLimiter, async (req, res) => {
     let charged = null;
 
     try {
-        const { prompt, model, maxTokens, temperature, systemPrompt, action } = req.body || {};
+        const { prompt, model, maxTokens, temperature, systemPrompt, action, expectJson } = req.body || {};
 
         if (typeof prompt !== 'string' || !prompt.trim()) {
             return res.status(400).json({ error: 'Missing required field: prompt' });
@@ -119,6 +119,11 @@ router.post('/generate', requireAuth, aiLimiter, async (req, res) => {
             max_tokens: cappedTokens,
             temperature: safeTemp,
             top_p: 0.9,
+            // Constrain the decoder to valid JSON when the caller is going to
+            // parse it. Asking for JSON in the prompt alone produced fenced
+            // blocks and unescaped quotes inside string values, which no
+            // client-side repair could recover.
+            ...(expectJson === true ? { response_format: { type: 'json_object' } } : {}),
         });
 
         if (!response.ok) {
@@ -141,6 +146,55 @@ router.post('/generate', requireAuth, aiLimiter, async (req, res) => {
         }
 
         const data = await response.json();
+
+        // A 200 is not proof of a usable answer. A model can return an empty
+        // `content` — most often a reasoning model that spent the whole
+        // max_tokens budget thinking (finish_reason "length"). That reached the
+        // client as "AI returned empty response" AFTER the credits had already
+        // been taken, so the user paid for nothing. Nothing delivered, nothing
+        // charged.
+        const text = data?.choices?.[0]?.message?.content;
+        if (typeof text !== 'string' || !text.trim()) {
+            const why = data?.choices?.[0]?.finish_reason === 'length'
+                ? 'truncated before any content (token budget exhausted)'
+                : 'empty content';
+            console.error(`[GENERATE] unusable response from ${resolvedModel}: ${why}`);
+
+            await refundCredits(userId, charged);
+            charged = null;
+            await logUsage(userId, resolvedAction, {
+                model: resolvedModel, success: false, error: `empty response (${why})`,
+                cost: 0, duration: Date.now() - startedAt,
+            });
+
+            return res.status(502).json({
+                error: 'The AI returned an empty response. Your credits were not charged — please try again.',
+            });
+        }
+
+        // When the caller asked for JSON, "delivered" means parseable JSON.
+        // response_format above makes this the rare case, but a model that
+        // ignores it would otherwise bill the user for output the client throws
+        // away with "الاستجابة رجعت بتنسيق غير صالح". The fence strip mirrors
+        // the client's first repair step so we only reject what it cannot use.
+        if (expectJson === true) {
+            const unfenced = text.replace(/^\s*```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '');
+            try {
+                JSON.parse(unfenced);
+            } catch {
+                console.error(`[GENERATE] ${resolvedModel} returned unparseable JSON for ${resolvedAction}`);
+                await refundCredits(userId, charged);
+                charged = null;
+                await logUsage(userId, resolvedAction, {
+                    model: resolvedModel, success: false, error: 'unparseable JSON',
+                    cost: 0, duration: Date.now() - startedAt,
+                });
+                return res.status(502).json({
+                    error: 'The AI returned a malformed response. Your credits were not charged — please try again.',
+                });
+            }
+        }
+
         const spent = charged;
         await logUsage(userId, resolvedAction, {
             model: resolvedModel,
@@ -241,6 +295,22 @@ router.post('/vision', requireAuth, aiLimiter, async (req, res) => {
         }
 
         const data = await response.json();
+
+        // Same guard as /generate: a 200 carrying no content must not be billed.
+        const text = data?.choices?.[0]?.message?.content;
+        if (typeof text !== 'string' || !text.trim()) {
+            console.error(`[VISION] unusable response from ${visionModel}: empty content`);
+            await refundCredits(userId, charged);
+            charged = null;
+            await logUsage(userId, 'extract', {
+                model: visionModel, success: false, error: 'empty response',
+                cost: 0, duration: Date.now() - startedAt,
+            });
+            return res.status(502).json({
+                error: 'The AI returned an empty response. Your credits were not charged — please try again.',
+            });
+        }
+
         const spent = charged;
         await logUsage(userId, 'extract', {
             model: visionModel,

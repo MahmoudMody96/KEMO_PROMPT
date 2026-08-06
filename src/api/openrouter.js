@@ -303,6 +303,14 @@ export async function callOpenRouter(
                 maxTokens,
                 temperature: finalTemp,
                 action,
+                // Ask the provider to CONSTRAIN the output to valid JSON rather
+                // than requesting it in prose and repairing the result. Models
+                // were emitting fenced blocks and, worse, unescaped quotes
+                // inside Arabic string values ("...كـ"قطعة أثرية حية"، وتنسى")
+                // — malformed in a way no amount of regex repair recovers, which
+                // surfaced as "الاستجابة رجعت بتنسيق غير صالح".
+                // The repair strategies below stay as a safety net.
+                expectJson: !returnRawText,
                 ...(systemMessage ? { systemPrompt: systemMessage } : {}),
             }, controller.signal);
 

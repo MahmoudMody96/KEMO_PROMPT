@@ -16,7 +16,21 @@ export async function callOpenRouter(body) {
             'HTTP-Referer': config.appUrl || 'https://kemo-engine.local',
             'X-Title': 'Kemo Engine',
         },
-        body: JSON.stringify(body),
+        body: JSON.stringify({
+            // Reasoning tokens are billed and counted against max_tokens, and a
+            // reasoning model will happily spend the ENTIRE budget thinking and
+            // return an empty `content`. Observed with qwen3.7-flash on the
+            // brainstorm action: max_tokens 1800 -> reasoning_tokens 1800,
+            // content length 0, finish_reason "length". The user saw
+            // "AI returned empty response" and was charged for it.
+            //
+            // Every prompt this app sends already carries an explicit,
+            // step-by-step protocol and asks for structured JSON, so the private
+            // chain-of-thought buys nothing here — it only adds latency, cost and
+            // this failure mode. Models without a reasoning mode ignore the flag.
+            reasoning: { enabled: false },
+            ...body,
+        }),
         signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
     });
 }
