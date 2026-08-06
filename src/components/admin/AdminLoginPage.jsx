@@ -114,9 +114,13 @@ const AdminLoginPage = () => {
                                 boxShadow: '0 8px 26px var(--brand-tint)',
                             }}
                         >
+                            {/* Label wrapped in a <span>, not a bare text node — see the note
+                                in auth/LoginPage.jsx: a loose text node beside an element is
+                                what translation extensions rewrite, and the next re-render
+                                then dies on removeChild. */}
                             {isLoading
                                 ? <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
-                                : <>{isAr ? 'تسجيل الدخول' : 'Sign in'} <ArrowRight className="h-4 w-4 rtl:rotate-180" aria-hidden="true" /></>}
+                                : <><span>{isAr ? 'تسجيل الدخول' : 'Sign in'}</span> <ArrowRight className="h-4 w-4 rtl:rotate-180" aria-hidden="true" /></>}
                         </button>
                     </form>
                 </div>

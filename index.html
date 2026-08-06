@@ -1,9 +1,16 @@
 <!DOCTYPE html>
-<html lang="en">
+<!-- translate="no": the app ships its own Arabic/English switcher, so browser
+     auto-translation adds nothing — and it actively breaks React. Translators
+     replace text nodes with their own <font> wrappers; React keeps a reference
+     to the original node, and the next re-render dies with
+     "NotFoundError: removeChild — the node to be removed is not a child of this
+     node", which is what crashed the signup screen. -->
+<html lang="en" translate="no">
 
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="google" content="notranslate" />
   <meta name="description"
     content="AI Video Prompt Architect - Generate comprehensive video production blueprints and reverse-engineer prompts from content" />
   <meta name="theme-color" content="#030712" />

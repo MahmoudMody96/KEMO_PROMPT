@@ -140,13 +140,22 @@ const LoginPage = () => {
                                 boxShadow: '0 8px 26px var(--brand-tint)',
                             }}
                         >
+                            {/* The label is wrapped in a <span> rather than left as a bare
+                                text node. A loose text node sitting next to an element is
+                                what page-translation extensions rewrite (they swap it for a
+                                <font> wrapper); React still holds the original node, and the
+                                next re-render crashes with "removeChild: the node to be
+                                removed is not a child of this node" — which is exactly how
+                                signup died. Owning an element keeps React's reference valid. */}
                             {isLoading ? (
                                 <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
                             ) : (
                                 <>
-                                    {isSignUp
-                                        ? (isAr ? 'إنشاء حساب' : 'Create account')
-                                        : (isAr ? 'تسجيل الدخول' : 'Sign in')}
+                                    <span>
+                                        {isSignUp
+                                            ? (isAr ? 'إنشاء حساب' : 'Create account')
+                                            : (isAr ? 'تسجيل الدخول' : 'Sign in')}
+                                    </span>
                                     <ArrowRight className="h-4 w-4 rtl:rotate-180" aria-hidden="true" />
                                 </>
                             )}
