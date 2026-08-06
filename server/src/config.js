@@ -55,10 +55,19 @@ export const config = {
         // real endpoint, so nothing changes unless it is set deliberately.
         url: optional('OPENROUTER_URL', 'https://openrouter.ai/api/v1/chat/completions'),
 
-        // THE model the server uses. Changing it here changes it everywhere —
-        // the client's requested model is only honoured when it appears in
-        // allowedModels below, so this is the single source of truth.
-        model: optional('OPENROUTER_MODEL', 'google/gemini-2.0-flash-001'),
+        // THE text model the server uses for /api/generate. Changing it here
+        // changes it everywhere the client doesn't override — the client's
+        // requested model is only honoured when it appears in allowedModels
+        // below, so this is the single source of truth for text generation.
+        model: optional('OPENROUTER_MODEL', 'google/gemini-2.5-flash-lite'),
+
+        // The model /api/vision uses, kept SEPARATE from the text model on
+        // purpose: the image extractor needs a vision-capable model, and many
+        // cheap text models (e.g. deepseek-*) accept text only. Pointing the
+        // text model at one of those would otherwise silently break extraction
+        // while still charging for it. Defaults to a vision model regardless of
+        // what OPENROUTER_MODEL is set to.
+        visionModel: optional('OPENROUTER_VISION_MODEL', 'google/gemini-2.5-flash-lite'),
 
         // Extra models a client is permitted to ask for, comma-separated.
         // Credits are priced per action, not per model, so anything reachable

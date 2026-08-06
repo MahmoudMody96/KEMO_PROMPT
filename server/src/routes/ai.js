@@ -107,8 +107,14 @@ router.post('/generate', requireAuth, aiLimiter, async (req, res) => {
         if (systemPrompt) messages.push({ role: 'system', content: systemPrompt });
         messages.push({ role: 'user', content: prompt });
 
+        // Resolve once and log THIS, not the raw request model. The client sends
+        // no model, so logging req.body.model recorded '' for every request —
+        // the admin activity log and any model-routing debugging saw a blank
+        // where the real model belonged.
+        const resolvedModel = pickModel(model);
+
         const response = await callOpenRouter({
-            model: pickModel(model),
+            model: resolvedModel,
             messages,
             max_tokens: cappedTokens,
             temperature: safeTemp,
@@ -122,7 +128,7 @@ router.post('/generate', requireAuth, aiLimiter, async (req, res) => {
             await refundCredits(userId, charged);
             charged = null;
             await logUsage(userId, resolvedAction, {
-                model, success: false, error: message, cost: 0, duration: Date.now() - startedAt,
+                model: resolvedModel, success: false, error: message, cost: 0, duration: Date.now() - startedAt,
             });
 
             // The upstream text is logged above but not relayed: provider errors
@@ -137,7 +143,7 @@ router.post('/generate', requireAuth, aiLimiter, async (req, res) => {
         const data = await response.json();
         const spent = charged;
         await logUsage(userId, resolvedAction, {
-            model,
+            model: resolvedModel,
             success: true,
             cost: spent,
             tokens: data?.usage?.total_tokens || 0,
@@ -165,7 +171,10 @@ router.post('/vision', requireAuth, aiLimiter, async (req, res) => {
     try {
         // `action` is intentionally not read from the body here — vision is
         // always priced as an extraction. See the chargeCredits call below.
-        const { prompt, model, images } = req.body || {};
+        // model is intentionally not read from the body: vision is pinned to the
+        // configured vision model (extraction needs image support).
+        const { prompt, images } = req.body || {};
+        const visionModel = config.openRouter.visionModel;
 
         if (typeof prompt !== 'string' || !prompt.trim()) {
             return res.status(400).json({ error: 'Missing required field: prompt' });
@@ -198,7 +207,10 @@ router.post('/vision', requireAuth, aiLimiter, async (req, res) => {
         charged = charge.cost;
 
         const response = await callOpenRouter({
-            model: pickModel(model),
+            // Vision always uses the configured vision model, never the text
+            // default or a client override: extraction requires image support,
+            // and the text model may be a text-only one (deepseek, etc.).
+            model: visionModel,
             messages: [{
                 content: [
                     { type: 'text', text: prompt },
@@ -218,7 +230,7 @@ router.post('/vision', requireAuth, aiLimiter, async (req, res) => {
             await refundCredits(userId, charged);
             charged = null;
             await logUsage(userId, 'extract', {
-                model, success: false, error: message, cost: 0, duration: Date.now() - startedAt,
+                model: visionModel, success: false, error: message, cost: 0, duration: Date.now() - startedAt,
             });
 
             return res.status(response.status === 429 ? 429 : 502).json({
@@ -231,7 +243,7 @@ router.post('/vision', requireAuth, aiLimiter, async (req, res) => {
         const data = await response.json();
         const spent = charged;
         await logUsage(userId, 'extract', {
-            model,
+            model: visionModel,
             success: true,
             cost: spent,
             tokens: data?.usage?.total_tokens || 0,
