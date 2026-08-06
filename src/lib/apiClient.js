@@ -87,6 +87,8 @@ export const admin = {
     logs: ({ action = 'all', limit = 200 } = {}) =>
         api.get(`/admin/logs?action=${action}&limit=${limit}`),
     updateUser: (id, patch) => api.patch(`/admin/users/${id}`, patch),
+    settings: () => api.get('/admin/settings'),
+    updateSettings: (patch) => api.patch('/admin/settings', patch),
 };
 
 // --- billing ------------------------------------------------------------

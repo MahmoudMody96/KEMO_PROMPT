@@ -6,6 +6,8 @@ import {
 import { CharacterCard, SceneCard, CopyBtn } from './OutputCards';
 import GeneratingState from './GeneratingState';
 import { regenerate_scene } from '../../api/promptApi';
+import { useToast } from '../ui/Toast';
+import { validateConsistency } from './QualityValidation';
 
 const ResultsPanel = () => {
 
@@ -14,14 +16,18 @@ const ResultsPanel = () => {
     const [expandedScene, setExpandedScene] = useState(0);
     const [regeneratingScene, setRegeneratingScene] = useState(-1);
     const { generatedOutput, setGeneratedOutput, isGenerating, generationProgress, t, isRTL, language, generatorInputs } = useAppContext();
+    const toast = useToast();
     const safeT = (key, fallback = '') => { const val = t?.(key); return (val && val !== key) ? val : fallback; };
 
-    // Auto-save results to localStorage + history
+    // Save to history.
+    //
+    // The `kemo-last-scenario` write that used to be here was a duplicate:
+    // AppContext already persists that key on every change. Two effects writing
+    // the same key on the same state change is a race with no upside — this one
+    // now only owns the history list.
     useEffect(() => {
         if (generatedOutput && !isGenerating) {
             try {
-                localStorage.setItem('kemo-last-scenario', JSON.stringify(generatedOutput));
-                // Save to history (max 10)
                 const historyRaw = localStorage.getItem('kemo-scenario-history');
                 const history = historyRaw ? JSON.parse(historyRaw) : [];
                 const title = generatedOutput.meta_data?.title || generatedOutput.metadata?.title || new Date().toLocaleTimeString();
@@ -51,6 +57,87 @@ const ResultsPanel = () => {
         if (Array.isArray(scenes)) return scenes.filter(Boolean);
         return [];
     };
+
+    /**
+     * Replace one scene immutably.
+     *
+     * The previous version spread the top level only — `{ ...generatedOutput }`
+     * leaves `scenes` pointing at the SAME array — then assigned into it. That
+     * wrote straight into the array held in state: the array identity never
+     * changed, so any memoised consumer would keep the stale value, and the
+     * pre-edit scene was destroyed with no way back.
+     *
+     * The functional updater also matters here: both callers are async, so
+     * closing over `generatedOutput` could clobber a concurrent edit.
+     */
+    const patchScene = React.useCallback((sceneIndex, patch) => {
+        setGeneratedOutput((prev) => {
+            if (!prev) return prev;
+            const key = Array.isArray(prev.scenes) ? 'scenes'
+                : Array.isArray(prev.sceneDirectives) ? 'sceneDirectives'
+                    : null;
+            if (!key || !prev[key][sceneIndex]) return prev;
+            return {
+                ...prev,
+                [key]: prev[key].map((s, i) => (i === sceneIndex ? { ...s, ...patch } : s)),
+            };
+        });
+    }, [setGeneratedOutput]);
+
+    // Derived data and its audit are computed BEFORE the early returns below.
+    // Hooks must run in the same order on every render, so anything memoised
+    // cannot sit after a conditional return. Both getters handle a null
+    // generatedOutput by returning [], so this is safe while still loading.
+    const characters = React.useMemo(() => getCharacters(generatedOutput), [generatedOutput]);
+    const scenes = React.useMemo(() => getScenes(generatedOutput), [generatedOutput]);
+
+    // validateConsistency already existed but was never imported anywhere — the
+    // check was written and then never run, so drift between scenes reached the
+    // user unflagged. Memoised because it walks every scene prompt and this
+    // component re-renders on each accordion toggle and inline edit.
+    // Stable handlers. Each takes the scene index as an argument instead of
+    // closing over it, so the identity never changes and React.memo on
+    // SceneCard actually prevents the other cards from re-rendering.
+    const handleToggleScene = React.useCallback((i) => {
+        setExpandedScene((prev) => (prev === i ? -1 : i));
+    }, []);
+
+    const handleUpdateScene = React.useCallback((sceneIndex, field, value) => {
+        patchScene(sceneIndex, { [field]: value });
+    }, [patchScene]);
+
+    const handleRegenerateScene = React.useCallback(async (sceneIndex) => {
+        setRegeneratingScene(sceneIndex);
+        try {
+            const result = await regenerate_scene({
+                sceneIndex,
+                existingScenes: scenes,
+                existingCharacters: characters,
+                originalInputs: generatorInputs || {},
+            });
+            if (!result || result.error) {
+                throw new Error(result?.error || safeT('regenFailed', 'The scene could not be regenerated'));
+            }
+            patchScene(sceneIndex, result);
+        } catch (e) {
+            // Was console-only: the spinner stopped and the scene silently
+            // stayed as it was, which is indistinguishable from a regeneration
+            // that produced identical text.
+            console.error('Regenerate scene failed:', e);
+            toast.error(e?.message || safeT('regenFailed', 'The scene could not be regenerated'));
+        } finally {
+            setRegeneratingScene(-1);
+        }
+        // Depends on the data it sends, so its identity changes only when that
+        // data changes — not on an accordion toggle, which is the case memo is
+        // protecting. safeT and toast are stable for the component's lifetime.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [patchScene, scenes, characters, generatorInputs]);
+
+    const audit = React.useMemo(
+        () => validateConsistency(scenes, characters),
+        [scenes, characters]
+    );
 
     if (isGenerating) return <GeneratingState language={language} progress={generationProgress} />;
 
@@ -84,8 +171,6 @@ const ResultsPanel = () => {
         );
     }
 
-    const characters = getCharacters(generatedOutput);
-    const scenes = getScenes(generatedOutput);
     const meta = generatedOutput.meta_data || generatedOutput.metadata || {};
     const blueprint = generatedOutput.creative_blueprint || null;
 
@@ -267,7 +352,7 @@ const ResultsPanel = () => {
                             {language === 'ar' ? 'الفكرة المنفذة' : 'Concept'}
                         </span>
                     </div>
-                    <p className="text-sm text-zinc-300" dir={isRTL ? 'rtl' : 'ltr'}>{meta.concept_used}</p>
+                    <p className="text-sm text-text2" dir={isRTL ? 'rtl' : 'ltr'}>{meta.concept_used}</p>
                     <div className={`flex items-center gap-3 mt-2 flex-wrap ${isRTL ? 'flex-row-reverse' : ''}`}>
                         {meta.visual_style_applied && <span className="meta-tag">🎨 {meta.visual_style_applied}</span>}
                         {meta.genre_applied && <span className="meta-tag">🎬 {meta.genre_applied}</span>}
@@ -309,11 +394,54 @@ const ResultsPanel = () => {
                 {activeTab === 'characters' && (
                     characters.length > 0
                         ? characters.map((char, i) => <CharacterCard key={i} char={char} index={i} isRTL={isRTL} language={language} />)
-                        : <div className="text-center py-12 text-zinc-500 text-sm">{language === 'ar' ? 'لا توجد بيانات شخصيات' : 'No character data'}</div>
+                        : <div className="text-center py-12 text-muted text-sm">{language === 'ar' ? 'لا توجد بيانات شخصيات' : 'No character data'}</div>
                 )}
                 {activeTab === 'screenplay' && (
                     scenes.length > 0 ? (
                         <>
+                            {/* Consistency audit — character and style drift across scenes.
+                                Silent when clean, so it only ever costs attention when
+                                there is something to act on. */}
+                            {audit.issues.length > 0 && (
+                                <div
+                                    className="mb-4 rounded-xl border p-3.5"
+                                    style={{
+                                        background: audit.stats.high_severity > 0 ? 'rgba(239,68,68,0.07)' : 'rgba(245,158,11,0.07)',
+                                        borderColor: audit.stats.high_severity > 0 ? 'rgba(239,68,68,0.28)' : 'rgba(245,158,11,0.28)',
+                                    }}
+                                >
+                                    <p className="text-sm font-semibold text-text1">
+                                        {language === 'ar'
+                                            ? `تنبيه ثبات — ${audit.issues.length} ملاحظة`
+                                            : `Consistency check — ${audit.issues.length} finding${audit.issues.length > 1 ? 's' : ''}`}
+                                    </p>
+                                    <p className="mt-1 text-[11px] text-muted">
+                                        {language === 'ar'
+                                            ? 'المشاهد دي ممكن تطلع بشخصية أو أسلوب مختلف. أعِد توليد المشهد لوحده لإصلاحه.'
+                                            : 'These scenes may render with a different character or style. Regenerate the scene to fix it.'}
+                                    </p>
+                                    <ul className="mt-2.5 space-y-1">
+                                        {audit.issues.slice(0, 5).map((issue, i) => (
+                                            <li key={`${issue.scene}-${issue.type}-${i}`} className="flex items-start gap-2 text-xs text-text2">
+                                                <span
+                                                    className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full"
+                                                    style={{ background: issue.severity === 'high' ? '#ef4444' : issue.severity === 'medium' ? '#f59e0b' : '#64748b' }}
+                                                    aria-hidden="true"
+                                                />
+                                                <span>{issue.message}</span>
+                                            </li>
+                                        ))}
+                                        {audit.issues.length > 5 && (
+                                            <li className="text-[11px] text-muted">
+                                                {language === 'ar'
+                                                    ? `و${audit.issues.length - 5} ملاحظة أخرى`
+                                                    : `and ${audit.issues.length - 5} more`}
+                                            </li>
+                                        )}
+                                    </ul>
+                                </div>
+                            )}
+
                             {/* Master Visual Prompt (Reference Image) */}
                             {meta?.master_visual_prompt && (
                                 <div className="mb-4 fade-in">
@@ -335,57 +463,54 @@ const ResultsPanel = () => {
                                 </div>
                             )}
 
-                            {/* Scene Cards — Accordion */}
-                            {scenes.map((scene, i) => <SceneCard key={i} scene={scene} index={i} isRTL={isRTL} language={language}
-                                isExpanded={expandedScene === i}
-                                onToggle={() => setExpandedScene(expandedScene === i ? -1 : i)}
-                                isRegenerating={regeneratingScene === i}
-                                onRegenerateScene={async (sceneIndex) => {
-                                    setRegeneratingScene(sceneIndex);
-                                    try {
-                                        const existingScenes = scenes;
-                                        const existingCharacters = characters;
-                                        const result = await regenerate_scene({
-                                            sceneIndex,
-                                            existingScenes,
-                                            existingCharacters,
-                                            originalInputs: generatorInputs || {}
-                                        });
-                                        if (result) {
-                                            const updated = { ...generatedOutput };
-                                            const scenesArr = updated.scenes || updated.sceneDirectives;
-                                            if (scenesArr && scenesArr[sceneIndex]) {
-                                                scenesArr[sceneIndex] = { ...scenesArr[sceneIndex], ...result };
-                                                setGeneratedOutput({ ...updated });
-                                            }
-                                        }
-                                    } catch (e) {
-                                        console.error('Regenerate scene failed:', e);
-                                    }
-                                    setRegeneratingScene(-1);
-                                }}
-                                onUpdateScene={(sceneIndex, field, value) => {
-                                    const updated = { ...generatedOutput };
-                                    const scenesArr = updated.scenes || updated.sceneDirectives;
-                                    if (scenesArr && scenesArr[sceneIndex]) {
-                                        scenesArr[sceneIndex] = { ...scenesArr[sceneIndex], [field]: value };
-                                        setGeneratedOutput({ ...updated });
-                                    }
-                                }}
-                            />)}
+                            {/* Scene Cards — Accordion.
+                                Handlers come from stable useCallbacks above rather than
+                                inline arrows: a new function identity on every render
+                                defeats React.memo on SceneCard entirely, so all scenes
+                                re-rendered whenever any one of them was touched.
+
+                                The key is the scene number, not the array index — with an
+                                index key React reuses the wrong card's inline edit state
+                                if scenes are ever reordered or removed. */}
+                            {scenes.map((scene, i) => (
+                                <SceneCard
+                                    key={scene.scene_number ?? `scene-${i}`}
+                                    scene={scene}
+                                    index={i}
+                                    isRTL={isRTL}
+                                    language={language}
+                                    isExpanded={expandedScene === i}
+                                    onToggle={handleToggleScene}
+                                    isRegenerating={regeneratingScene === i}
+                                    onRegenerateScene={handleRegenerateScene}
+                                    onUpdateScene={handleUpdateScene}
+                                />
+                            ))}
                         </>
                     ) : (
-                        <div className="text-center py-12 text-zinc-500 text-sm">{language === 'ar' ? 'لا توجد مشاهد' : 'No scenes'}</div>
+                        <div className="text-center py-12 text-muted text-sm">{language === 'ar' ? 'لا توجد مشاهد' : 'No scenes'}</div>
                     )
                 )}
             </div>
 
+            {/* Parsed to nothing usable.
+                This used to dump the entire raw JSON payload on screen, which
+                is developer diagnostics — not something to hand a customer who
+                just spent credits. They get a plain explanation and a way
+                forward; the payload goes to the console for debugging. */}
             {characters.length === 0 && scenes.length === 0 && (
-                <div className="mt-4 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
-                    <p className="text-yellow-400 text-xs mb-2">{language === 'ar' ? 'تشخيص: استجابة الـ API الخام' : 'Debug: Raw API Response'}</p>
-                    <pre className="text-xs text-zinc-400 overflow-auto max-h-40">
-                        {JSON.stringify(generatedOutput, null, 2)}
-                    </pre>
+                <div className="mt-4 rounded-xl border p-4"
+                    style={{ background: 'var(--overlay-4)', borderColor: 'var(--border-color)' }}>
+                    <p className="text-sm font-medium text-text1">
+                        {language === 'ar'
+                            ? 'الاستجابة وصلت بشكل غير متوقع'
+                            : 'The response came back in an unexpected shape'}
+                    </p>
+                    <p className="mt-1.5 text-xs leading-relaxed text-muted">
+                        {language === 'ar'
+                            ? 'رصيدك اتخصم مرة واحدة بس. جرّب تولّد تاني — وغالباً تبسيط الفكرة أو تقليل عدد المشاهد بيحل المشكلة.'
+                            : 'You were charged once. Try generating again — simplifying the idea or lowering the scene count usually resolves it.'}
+                    </p>
                 </div>
             )}
         </div>

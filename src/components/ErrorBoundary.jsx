@@ -26,27 +26,41 @@ class ErrorBoundary extends React.Component {
                             </div>
                             <div>
                                 <h2 className="text-xl font-bold text-red-500">Application Crashed</h2>
-                                <p className="text-sm text-zinc-400">Something went wrong while rendering.</p>
+                                <p className="text-sm text-text2">Something went wrong while rendering.</p>
                             </div>
                         </div>
 
-                        <div className="bg-black/50 rounded-lg p-4 border border-zinc-800 overflow-auto max-h-[60vh] mb-6 font-mono text-sm">
-                            <p className="text-red-400 font-semibold mb-2">{this.state.error && this.state.error.toString()}</p>
-                            <pre className="text-zinc-500 whitespace-pre-wrap text-xs">
-                                {this.state.errorInfo && this.state.errorInfo.componentStack}
-                            </pre>
-                        </div>
+                        {/* The stack trace and component tree are for developers,
+                            not end users — in production they leak internal file
+                            paths and component names. The full detail always goes
+                            to the console via componentDidCatch. */}
+                        {import.meta.env.DEV ? (
+                            <div className="bg-black/50 rounded-lg p-4 border border-zinc-800 overflow-auto max-h-[60vh] mb-6 font-mono text-sm">
+                                <p className="text-red-400 font-semibold mb-2">{this.state.error && this.state.error.toString()}</p>
+                                <pre className="text-muted whitespace-pre-wrap text-xs">
+                                    {this.state.errorInfo && this.state.errorInfo.componentStack}
+                                </pre>
+                            </div>
+                        ) : (
+                            <div className="bg-black/50 rounded-lg p-4 border border-zinc-800 mb-6 text-sm text-text2">
+                                Reloading usually fixes this. If it keeps happening, the details are in your browser console.
+                            </div>
+                        )}
 
                         <div className="flex justify-end gap-3">
                             <button
                                 onClick={() => {
-                                    localStorage.clear();
+                                    // Only the app's own volatile keys. localStorage.clear()
+                                    // also destroyed the user's saved scenarios, scenario
+                                    // history and custom templates with no warning.
+                                    ['kemo-last-scenario', 'kemo-scenario-history', 'promptforge_prev_ideas']
+                                        .forEach(k => localStorage.removeItem(k));
                                     sessionStorage.clear();
                                     window.location.reload();
                                 }}
-                                className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-lg transition-colors text-sm"
+                                className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-text2 rounded-lg transition-colors text-sm"
                             >
-                                Clear Cache & Reload
+                                Reset App Data & Reload
                             </button>
                             <button
                                 onClick={() => window.location.reload()}

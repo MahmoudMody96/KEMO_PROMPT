@@ -1,12 +1,23 @@
-// src/components/auth/LoginPage.jsx — Authentication Page
-// Modern, premium login/signup interface with RTL support
+// src/components/auth/LoginPage.jsx
+//
+// Rebuilt on the shared identity layer, replacing a separate 216-line
+// stylesheet of hardcoded values. Two fixes came with it:
+//
+//   * the page was hardcoded Arabic — every label, button and message — so an
+//     English-preferring user got an Arabic login screen with no way out;
+//   * it was a dead end. There was no way back to the public site once you
+//     landed here, which matters now that the landing page is public.
 
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { Mail, Lock, User, Chrome, ArrowRight, Loader2, UserX } from 'lucide-react';
+import { useAppContext } from '../../context/AppContext';
+import { Mail, Lock, User, ArrowRight, Loader2, ArrowLeft } from 'lucide-react';
 
 const LoginPage = () => {
     const { signIn, signUp, error: authError } = useAuth();
+    const { language, isRTL, setActiveTab } = useAppContext();
+    const isAr = language === 'ar';
+
     const [isSignUp, setIsSignUp] = useState(false);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -26,120 +37,145 @@ const LoginPage = () => {
         try {
             if (isSignUp) {
                 const result = await signUp(email, password, displayName);
-                if (result.error) {
-                    setLocalError(result.error);
-                } else {
-                    setSuccessMessage('✅ تم إنشاء الحساب بنجاح!');
-                }
+                if (result.error) setLocalError(result.error);
+                else setSuccessMessage(isAr ? 'تم إنشاء الحساب بنجاح' : 'Account created');
             } else {
                 const result = await signIn(email, password);
-                if (result?.error) {
-                    setLocalError(result.error);
-                }
+                if (result?.error) setLocalError(result.error);
             }
         } finally {
             setIsLoading(false);
         }
     };
 
-    // Google sign-in went away with Supabase Auth. The button stays so the
-    // layout is ready for it, but it says so plainly instead of silently failing.
-    const handleGoogleLogin = () => {
-        setLocalError('تسجيل الدخول بجوجل غير متاح حالياً — استخدم البريد وكلمة المرور');
-    };
+    const field = 'h-12 w-full rounded-xl border border-border bg-[var(--bg-input)] ps-11 pe-3 text-sm text-text1 outline-none transition-colors focus:border-[var(--brand-border-strong)]';
 
     return (
-        <div className="login-page">
-            <div className="login-container">
-                {/* Logo & Title */}
-                <div className="login-header">
-                    <div className="login-logo">
-                        <img src="/logo.jpg" alt="Kemo Engine" className="w-full h-full rounded-[18px] object-cover" />
-                    </div>
-                    <h1 className="login-title">Kemo Engine</h1>
-                    <p className="login-subtitle">
-                        {isSignUp ? 'إنشاء حساب جديد' : 'تسجيل الدخول لحسابك'}
-                    </p>
-                </div>
+        <div className="ambient relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-10">
+            <div className="w-full max-w-[400px]">
+                {/* Back to the public site — this screen used to be inescapable. */}
+                <button
+                    onClick={() => setActiveTab('home')}
+                    className="focus-ring mb-6 inline-flex items-center gap-1.5 rounded-lg text-sm text-muted transition-colors hover:text-text1"
+                >
+                    <ArrowLeft className="h-4 w-4 rtl:rotate-180" aria-hidden="true" />
+                    {isAr ? 'رجوع' : 'Back'}
+                </button>
 
-                {/* Form */}
-                <form onSubmit={handleSubmit} className="login-form">
-                    {isSignUp && (
-                        <div className="login-field">
-                            <User className="login-field-icon" />
+                <div className="surface-card p-7 md:p-8">
+                    <div className="text-center">
+                        <img
+                            src="/logo.jpg"
+                            alt=""
+                            aria-hidden="true"
+                            className="mx-auto h-14 w-14 rounded-2xl object-cover"
+                            style={{ boxShadow: '0 0 0 1px var(--border-color), var(--elevation-2)' }}
+                        />
+                        <h1 className="mt-4 text-2xl font-extrabold tracking-tight text-text1">
+                            <span className="brand-text">Kemo</span> Engine
+                        </h1>
+                        <p className="mt-1.5 text-sm text-muted">
+                            {isSignUp
+                                ? (isAr ? 'إنشاء حساب جديد' : 'Create your account')
+                                : (isAr ? 'تسجيل الدخول' : 'Sign in to continue')}
+                        </p>
+                    </div>
+
+                    <form onSubmit={handleSubmit} className="mt-7 space-y-3.5">
+                        {isSignUp && (
+                            <div className="relative">
+                                <label htmlFor="auth-name" className="sr-only">{isAr ? 'الاسم' : 'Name'}</label>
+                                <User className="pointer-events-none absolute inset-block-0 my-auto h-4 w-4 text-muted" style={{ insetInlineStart: '0.9rem' }} aria-hidden="true" />
+                                <input
+                                    id="auth-name" type="text" autoComplete="name" required dir="auto"
+                                    placeholder={isAr ? 'الاسم' : 'Name'}
+                                    value={displayName} onChange={(e) => setDisplayName(e.target.value)}
+                                    className={field}
+                                />
+                            </div>
+                        )}
+
+                        <div className="relative">
+                            <label htmlFor="auth-email" className="sr-only">{isAr ? 'البريد الإلكتروني' : 'Email'}</label>
+                            <Mail className="pointer-events-none absolute inset-block-0 my-auto h-4 w-4 text-muted" style={{ insetInlineStart: '0.9rem' }} aria-hidden="true" />
                             <input
-                                type="text"
-                                placeholder="الاسم"
-                                value={displayName}
-                                onChange={(e) => setDisplayName(e.target.value)}
-                                required
-                                className="login-input"
+                                id="auth-email" type="email" autoComplete="email" required dir="ltr"
+                                placeholder={isAr ? 'البريد الإلكتروني' : 'Email'}
+                                value={email} onChange={(e) => setEmail(e.target.value)}
+                                className={field}
                             />
                         </div>
+
+                        <div className="relative">
+                            <label htmlFor="auth-password" className="sr-only">{isAr ? 'كلمة المرور' : 'Password'}</label>
+                            <Lock className="pointer-events-none absolute inset-block-0 my-auto h-4 w-4 text-muted" style={{ insetInlineStart: '0.9rem' }} aria-hidden="true" />
+                            <input
+                                id="auth-password" type="password" required minLength={6} dir="ltr"
+                                autoComplete={isSignUp ? 'new-password' : 'current-password'}
+                                placeholder={isAr ? 'كلمة المرور' : 'Password'}
+                                value={password} onChange={(e) => setPassword(e.target.value)}
+                                className={field}
+                            />
+                        </div>
+
+                        {error && (
+                            <p role="alert" className="rounded-xl px-3.5 py-2.5 text-xs leading-relaxed"
+                                style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.28)', color: '#ef4444' }}>
+                                {error}
+                            </p>
+                        )}
+                        {successMessage && (
+                            <p role="status" className="rounded-xl px-3.5 py-2.5 text-xs"
+                                style={{ background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.28)', color: '#22c55e' }}>
+                                {successMessage}
+                            </p>
+                        )}
+
+                        <button
+                            type="submit"
+                            disabled={isLoading}
+                            className="press focus-ring touch-target inline-flex w-full items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-bold on-brand text-white transition-opacity hover:opacity-90 disabled:opacity-60"
+                            style={{
+                                background: 'linear-gradient(135deg, var(--cta-1), var(--cta-2))',
+                                boxShadow: '0 8px 26px var(--brand-tint)',
+                            }}
+                        >
+                            {isLoading ? (
+                                <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
+                            ) : (
+                                <>
+                                    {isSignUp
+                                        ? (isAr ? 'إنشاء حساب' : 'Create account')
+                                        : (isAr ? 'تسجيل الدخول' : 'Sign in')}
+                                    <ArrowRight className="h-4 w-4 rtl:rotate-180" aria-hidden="true" />
+                                </>
+                            )}
+                        </button>
+                    </form>
+
+                    {isSignUp && (
+                        <p className="mt-4 text-center text-[11px] text-muted">
+                            {isAr ? '20 رصيد مجاني عند التسجيل — بدون بطاقة.' : '20 free credits on signup — no card required.'}
+                        </p>
                     )}
 
-                    <div className="login-field">
-                        <Mail className="login-field-icon" />
-                        <input
-                            type="email"
-                            placeholder="البريد الإلكتروني"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            required
-                            className="login-input"
-                        />
+                    <div className="mt-6 border-t border-border pt-5 text-center text-sm">
+                        <span className="text-muted">
+                            {isSignUp ? (isAr ? 'عندك حساب؟' : 'Already have an account?') : (isAr ? 'مش عندك حساب؟' : "Don't have an account?")}
+                        </span>{' '}
+                        <button
+                            onClick={() => { setIsSignUp(!isSignUp); setSuccessMessage(''); setLocalError(''); }}
+                            className="focus-ring rounded font-semibold"
+                            style={{ color: 'var(--brand-fg)' }}
+                        >
+                            {isSignUp ? (isAr ? 'تسجيل الدخول' : 'Sign in') : (isAr ? 'إنشاء حساب' : 'Create one')}
+                        </button>
                     </div>
-
-                    <div className="login-field">
-                        <Lock className="login-field-icon" />
-                        <input
-                            type="password"
-                            placeholder="كلمة المرور"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            required
-                            minLength={6}
-                            className="login-input"
-                        />
-                    </div>
-
-                    {/* Error/Success Messages */}
-                    {error && <div className="login-error">{error}</div>}
-                    {successMessage && <div className="login-success">{successMessage}</div>}
-
-                    {/* Submit Button */}
-                    <button type="submit" className="login-btn-primary" disabled={isLoading}>
-                        {isLoading ? (
-                            <Loader2 className="w-5 h-5 animate-spin" />
-                        ) : (
-                            <>
-                                <span>{isSignUp ? 'إنشاء حساب' : 'تسجيل الدخول'}</span>
-                                <ArrowRight className="w-5 h-5" />
-                            </>
-                        )}
-                    </button>
-
-                    {/* Divider */}
-                    <div className="login-divider">
-                        <span>أو</span>
-                    </div>
-
-                    {/* Google Sign In */}
-                    <button type="button" onClick={handleGoogleLogin} className="login-btn-google" disabled={isLoading}>
-                        <Chrome className="w-5 h-5" />
-                        <span>تسجيل الدخول بـ Google</span>
-                    </button>
-
-
-                </form>
-
-                {/* Toggle Sign Up / Sign In */}
-                <div className="login-toggle">
-                    <span>{isSignUp ? 'عندك حساب؟' : 'مش عندك حساب؟'}</span>
-                    <button onClick={() => { setIsSignUp(!isSignUp); setSuccessMessage(''); }} className="login-toggle-btn">
-                        {isSignUp ? 'تسجيل الدخول' : 'إنشاء حساب جديد'}
-                    </button>
                 </div>
+
+                <p className="mt-5 text-center text-[11px] text-muted" dir={isRTL ? 'rtl' : 'ltr'}>
+                    {isAr ? 'مفتاح المزوّد مايوصلش للمتصفح أبداً.' : 'The provider key never reaches your browser.'}
+                </p>
             </div>
         </div>
     );

@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { search_viral_trends, generate_from_trend } from '../../api/promptApi';
+import { useCopyFeedback } from '../../lib/useCopyFeedback';
+import { useModal } from '../../lib/useModal';
 import { useAppContext } from '../../context/AppContext';
 import { useToast } from '../ui/Toast';
 import { Search, Sparkles, TrendingUp, Eye, Zap, Wrench, ArrowRight, RotateCcw, Copy, Check, Music, Shield, Monitor, X, Settings2 } from 'lucide-react';
@@ -51,16 +53,16 @@ const ViralMeter = ({ score }) => {
     const numScore = parseInt(score) || 0;
     const percentage = Math.min(100, Math.max(0, numScore));
     const getColor = (s) => {
-        if (s >= 90) return { bar: 'from-green-500 to-emerald-400', text: 'text-green-400', bg: 'bg-green-500/10' };
-        if (s >= 80) return { bar: 'from-yellow-500 to-amber-400', text: 'text-yellow-400', bg: 'bg-yellow-500/10' };
-        return { bar: 'from-orange-500 to-red-400', text: 'text-orange-400', bg: 'bg-orange-500/10' };
+        if (s >= 90) return { bar: 'from-green-500 to-emerald-400', text: 'text-[var(--success-fg)]', bg: 'bg-green-500/10' };
+        if (s >= 80) return { bar: 'from-yellow-500 to-amber-400', text: 'text-[var(--warn-fg)]', bg: 'bg-yellow-500/10' };
+        return { bar: 'from-orange-500 to-red-400', text: 'text-[var(--warn-fg)]', bg: 'bg-orange-500/10' };
     };
     const colors = getColor(numScore);
 
     return (
-        <div className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg ${colors.bg} border border-white/5`}>
+        <div className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg ${colors.bg} border border-border`}>
             <span className="text-xs">🔥</span>
-            <div className="flex-1 h-1.5 bg-white/10 rounded-full overflow-hidden min-w-[40px]">
+            <div className="flex-1 h-1.5 bg-bg2 rounded-full overflow-hidden min-w-[40px]">
                 <div
                     className={`h-full rounded-full bg-gradient-to-r ${colors.bar} transition-all duration-700`}
                     style={{ width: `${percentage}%` }}
@@ -76,17 +78,24 @@ const DNAModal = ({ isOpen, onClose, onGenerate, t, isRTL, textDir }) => {
     const [genre, setGenre] = useState('');
     const [character, setCharacter] = useState('');
     const [dialect, setDialect] = useState('');
+    // Hook must run before the early return below — it is keyed on isOpen and
+    // no-ops while closed.
+    const dialogRef = useModal(isOpen, onClose);
 
     if (!isOpen) return null;
 
-    const selectClass = `w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white outline-none focus:border-blue-500/50 transition-colors appearance-none cursor-pointer`;
+    const selectClass = `w-full bg-black/40 border border-border rounded-lg px-3 py-2.5 text-sm text-white outline-none focus:border-blue-500/50 transition-colors appearance-none cursor-pointer`;
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
             <div
-                className="bg-[#151C31] border border-white/10 rounded-2xl p-5 w-full max-w-md shadow-2xl"
+                className="bg-[#151C31] border border-border rounded-2xl p-5 w-full max-w-md shadow-2xl"
                 onClick={(e) => e.stopPropagation()}
                 dir={textDir}
+                ref={dialogRef}
+                role="dialog"
+                aria-modal="true"
+                aria-label={t('customizeBlueprint')}
             >
                 {/* Header */}
                 <div className="flex items-center justify-between mb-5" style={{ flexDirection: isRTL ? 'row-reverse' : 'row' }}>
@@ -144,7 +153,7 @@ const DNAModal = ({ isOpen, onClose, onGenerate, t, isRTL, textDir }) => {
                 <div className="flex gap-2" style={{ flexDirection: isRTL ? 'row-reverse' : 'row' }}>
                     <button
                         onClick={() => onGenerate({ genre, character, dialect })}
-                        className="flex-1 bg-gradient-to-r from-blue-600 to-sky-600 hover:from-blue-500 hover:to-sky-500 text-white py-2.5 rounded-xl text-sm font-semibold transition-all shadow-lg shadow-blue-900/20 flex items-center justify-center gap-2"
+                        className="flex-1 bg-gradient-to-r from-[var(--cta-1)] to-[var(--cta-2)] hover:opacity-90 text-white py-2.5 rounded-xl text-sm font-semibold transition-all shadow-lg shadow-blue-900/20 flex items-center justify-center gap-2"
                         style={{ flexDirection: isRTL ? 'row-reverse' : 'row' }}
                     >
                         <Sparkles className="w-4 h-4" />
@@ -152,7 +161,7 @@ const DNAModal = ({ isOpen, onClose, onGenerate, t, isRTL, textDir }) => {
                     </button>
                     <button
                         onClick={onClose}
-                        className="px-4 py-2.5 bg-white/5 hover:bg-white/10 text-muted hover:text-white border border-white/10 rounded-xl text-sm transition-all"
+                        className="px-4 py-2.5 bg-bg2 hover:bg-bg2 text-muted hover:text-white border border-border rounded-xl text-sm transition-all"
                     >
                         {t('cancel')}
                     </button>
@@ -175,7 +184,7 @@ const TrendHunter = () => {
     const [blueprint, setBlueprint] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
     const [loadingMessage, setLoadingMessage] = useState('');
-    const [copied, setCopied] = useState(false);
+    const { copied, copy } = useCopyFeedback();
     // DNA Modal state
     const [showDNAModal, setShowDNAModal] = useState(false);
     const [pendingTrend, setPendingTrend] = useState(null);
@@ -267,11 +276,7 @@ Apply this viral formula to my video.`;
     };
 
     // Copy blueprint JSON
-    const handleCopy = () => {
-        navigator.clipboard.writeText(JSON.stringify(blueprint, null, 2));
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-    };
+    const handleCopy = () => copy(blueprint);
 
     // Platform label helper
     const getPlatformLabel = (id) => {
@@ -323,7 +328,7 @@ Apply this viral formula to my video.`;
                     {/* Hero Content */}
                     <div className="relative z-10 text-center max-w-2xl mx-auto" dir={textDir}>
                         {/* Icon */}
-                        <div className="w-14 h-14 mx-auto mb-4 rounded-xl bg-gradient-to-br from-blue-600 to-sky-600 flex items-center justify-center shadow-xl shadow-blue-900/40">
+                        <div className="w-14 h-14 mx-auto mb-4 rounded-xl bg-gradient-to-br from-[var(--cta-1)] to-[var(--cta-2)] flex items-center justify-center shadow-xl shadow-blue-900/40">
                             <TrendingUp className="w-7 h-7 text-white" />
                         </div>
 
@@ -342,8 +347,8 @@ Apply this viral formula to my video.`;
                                     key={p.id}
                                     onClick={() => setPlatform(p.id)}
                                     className={`px-3.5 py-2 rounded-xl text-xs font-medium transition-all duration-200 flex items-center gap-1.5 border ${platform === p.id
-                                        ? 'bg-blue-500/20 text-blue-300 border-blue-500/40 shadow-lg shadow-blue-900/20'
-                                        : 'bg-white/5 text-muted border-white/5 hover:bg-white/10 hover:text-white'
+                                        ? 'bg-blue-500/20 text-[var(--chart-5)] border-blue-500/40 shadow-lg shadow-blue-900/20'
+                                        : 'bg-bg2 text-muted border-border hover:bg-bg2 hover:text-white'
                                         }`}
                                 >
                                     <span>{p.icon}</span>
@@ -359,8 +364,8 @@ Apply this viral formula to my video.`;
                                     key={r.id}
                                     onClick={() => setRegion(r.id)}
                                     className={`px-3.5 py-2 rounded-xl text-xs font-medium transition-all duration-200 flex items-center gap-1.5 border ${region === r.id
-                                        ? 'bg-purple-500/20 text-purple-300 border-purple-500/40 shadow-lg shadow-purple-900/20'
-                                        : 'bg-white/5 text-muted border-white/5 hover:bg-white/10 hover:text-white'
+                                        ? 'bg-purple-500/20 text-[var(--brand-fg)] border-purple-500/40 shadow-lg shadow-purple-900/20'
+                                        : 'bg-bg2 text-muted border-border hover:bg-bg2 hover:text-white'
                                         }`}
                                 >
                                     <span>{r.icon}</span>
@@ -391,11 +396,11 @@ Apply this viral formula to my video.`;
                                     <button
                                         onClick={handleSearch}
                                         disabled={isLoading}
-                                        className="px-6 py-3 bg-gradient-to-r from-blue-600 to-sky-600 hover:from-blue-500 hover:to-sky-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-all duration-300 flex items-center gap-2 shadow-lg shadow-blue-900/30"
+                                        className="px-6 py-3 bg-gradient-to-r from-[var(--cta-1)] to-[var(--cta-2)] hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-all duration-300 flex items-center gap-2 shadow-lg shadow-blue-900/30"
                                     >
                                         {isLoading ? (
                                             <>
-                                                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                                <div className="w-4 h-4 border-2 border-border border-t-white rounded-full animate-spin" />
                                                 {t('scanning')}
                                             </>
                                         ) : (
@@ -428,7 +433,7 @@ Apply this viral formula to my video.`;
                                     {t('selectStyleToGenerate')}
                                 </p>
                                 {platform !== 'general' && (
-                                    <span className="text-[10px] px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-300 border border-blue-500/20">
+                                    <span className="text-[10px] px-2 py-0.5 rounded-md bg-blue-500/10 text-[var(--chart-5)] border border-blue-500/20">
                                         {PLATFORMS.find(p => p.id === platform)?.icon} {getPlatformLabel(platform)}
                                     </span>
                                 )}
@@ -452,7 +457,7 @@ Apply this viral formula to my video.`;
                             <p className="text-muted text-sm">{t('noResultsDesc')}</p>
                             <button
                                 onClick={handleReset}
-                                className="mt-4 flex items-center gap-2 px-4 py-2 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/30 rounded-xl transition-all text-sm"
+                                className="mt-4 flex items-center gap-2 px-4 py-2 bg-blue-500/10 hover:bg-blue-500/20 text-[var(--chart-5)] border border-blue-500/30 rounded-xl transition-all text-sm"
                             >
                                 <RotateCcw className="w-4 h-4" />
                                 {t('newSearch')}
@@ -472,24 +477,24 @@ Apply this viral formula to my video.`;
                                     {/* Header: Title + Score + Structure */}
                                     <div className="flex justify-between items-start mb-3" style={{ flexDirection: isRTL ? 'row-reverse' : 'row' }}>
                                         <div className="flex-1" style={{ textAlign: isRTL ? 'right' : 'left' }}>
-                                            <h3 className="text-lg font-bold text-text1 group-hover:text-blue-400 transition-colors mb-1">
+                                            <h3 className="text-lg font-bold text-text1 group-hover:text-[var(--chart-5)] transition-colors mb-1">
                                                 {trend.title}
                                             </h3>
                                             <div className="flex items-center gap-2 flex-wrap" style={{ flexDirection: isRTL ? 'row-reverse' : 'row' }}>
                                                 {(trend.structure_name) && (
-                                                    <span className="text-xs text-muted bg-white/5 px-2 py-0.5 rounded-md">
+                                                    <span className="text-xs text-muted bg-bg2 px-2 py-0.5 rounded-md">
                                                         {trend.structure_name}
                                                     </span>
                                                 )}
                                                 {(trend.best_platform) && (
-                                                    <span className="text-[10px] text-purple-300 bg-purple-500/10 px-1.5 py-0.5 rounded border border-purple-500/20">
+                                                    <span className="text-[10px] text-[var(--brand-fg)] bg-purple-500/10 px-1.5 py-0.5 rounded border border-purple-500/20">
                                                         📱 {trend.best_platform}
                                                     </span>
                                                 )}
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-1.5 shrink-0">
-                                            <span className="bg-blue-500/20 text-blue-300 text-xs px-2 py-1 rounded-full border border-blue-500/30">
+                                            <span className="bg-blue-500/20 text-[var(--chart-5)] text-xs px-2 py-1 rounded-full border border-blue-500/30">
                                                 {t('viral')}
                                             </span>
                                         </div>
@@ -507,7 +512,7 @@ Apply this viral formula to my video.`;
                                         {/* Why it works */}
                                         <div>
                                             <p className="text-muted text-xs font-semibold mb-1.5 flex items-center gap-1.5" style={{ flexDirection: isRTL ? 'row-reverse' : 'row' }}>
-                                                <TrendingUp className="w-3.5 h-3.5 text-green-400" />
+                                                <TrendingUp className="w-3.5 h-3.5 text-[var(--success-fg)]" />
                                                 {t('whyItWorks')}
                                             </p>
                                             <p className="text-text2 text-sm leading-relaxed" style={{ textAlign: isRTL ? 'right' : 'left' }}>
@@ -518,7 +523,7 @@ Apply this viral formula to my video.`;
                                         {/* Visual Style */}
                                         <div>
                                             <p className="text-muted text-xs font-semibold mb-1.5 flex items-center gap-1.5" style={{ flexDirection: isRTL ? 'row-reverse' : 'row' }}>
-                                                <Eye className="w-3.5 h-3.5 text-blue-400" />
+                                                <Eye className="w-3.5 h-3.5 text-[var(--chart-5)]" />
                                                 {t('visualStyle')}
                                             </p>
                                             <div className="text-text2 text-xs bg-black/30 p-3 rounded-lg border border-border" style={{ textAlign: isRTL ? 'right' : 'left' }}>
@@ -530,7 +535,7 @@ Apply this viral formula to my video.`;
                                         {(trend.audio_style) && (
                                             <div>
                                                 <p className="text-muted text-xs font-semibold mb-1.5 flex items-center gap-1.5" style={{ flexDirection: isRTL ? 'row-reverse' : 'row' }}>
-                                                    <Music className="w-3.5 h-3.5 text-purple-400" />
+                                                    <Music className="w-3.5 h-3.5 text-[var(--brand-fg)]" />
                                                     {t('audioStyle')}
                                                 </p>
                                                 <div className="text-text2 text-xs bg-black/30 p-3 rounded-lg border border-border" style={{ textAlign: isRTL ? 'right' : 'left' }}>
@@ -542,7 +547,7 @@ Apply this viral formula to my video.`;
                                         {/* Example Hook */}
                                         <div>
                                             <p className="text-muted text-xs font-semibold mb-1.5 flex items-center gap-1.5" style={{ flexDirection: isRTL ? 'row-reverse' : 'row' }}>
-                                                <Zap className="w-3.5 h-3.5 text-yellow-400" />
+                                                <Zap className="w-3.5 h-3.5 text-[var(--warn-fg)]" />
                                                 {t('hookExample')}
                                             </p>
                                             <p className={`text-white text-sm italic bg-gradient-to-r from-yellow-500/10 to-orange-500/10 p-3 rounded-lg ${isRTL ? 'border-r-2' : 'border-l-2'} border-yellow-500`} style={{ textAlign: isRTL ? 'right' : 'left' }}>
@@ -554,13 +559,13 @@ Apply this viral formula to my video.`;
                                         {Array.isArray(trend.retention_tricks) && trend.retention_tricks.length > 0 && (
                                             <div>
                                                 <p className="text-muted text-xs font-semibold mb-1.5 flex items-center gap-1.5" style={{ flexDirection: isRTL ? 'row-reverse' : 'row' }}>
-                                                    <Shield className="w-3.5 h-3.5 text-cyan-400" />
+                                                    <Shield className="w-3.5 h-3.5 text-[var(--chart-3)]" />
                                                     {t('retentionTricks')}
                                                 </p>
                                                 <ul className="space-y-1">
                                                     {trend.retention_tricks.map((trick, i) => (
                                                         <li key={i} className="text-text2 text-xs flex items-start gap-1.5" style={{ flexDirection: isRTL ? 'row-reverse' : 'row', textAlign: isRTL ? 'right' : 'left' }}>
-                                                            <span className="text-cyan-400 mt-0.5">•</span>
+                                                            <span className="text-[var(--chart-3)] mt-0.5">•</span>
                                                             {trick}
                                                         </li>
                                                     ))}
@@ -573,7 +578,7 @@ Apply this viral formula to my video.`;
                                     <div className="flex gap-2 mt-auto" style={{ flexDirection: isRTL ? 'row-reverse' : 'row' }}>
                                         <button
                                             onClick={() => handleGenerateClick(trend)}
-                                            className="flex-1 bg-gradient-to-r from-blue-600 to-sky-600 hover:from-blue-500 hover:to-sky-500 text-white py-2.5 rounded-xl text-sm font-medium transition-all shadow-lg shadow-blue-900/20 flex items-center justify-center gap-2"
+                                            className="flex-1 bg-gradient-to-r from-[var(--cta-1)] to-[var(--cta-2)] hover:opacity-90 text-white py-2.5 rounded-xl text-sm font-medium transition-all shadow-lg shadow-blue-900/20 flex items-center justify-center gap-2"
                                             style={{ flexDirection: isRTL ? 'row-reverse' : 'row' }}
                                         >
                                             <Sparkles className="w-4 h-4" />
@@ -612,13 +617,13 @@ Apply this viral formula to my video.`;
                             <div className="absolute inset-0 border-4 border-transparent border-t-blue-500 rounded-full animate-spin" />
                             <div className="absolute inset-3 border-4 border-transparent border-t-blue-500 rounded-full animate-spin" style={{ animationDirection: 'reverse', animationDuration: '1.5s' }} />
                             <div className="absolute inset-0 flex items-center justify-center">
-                                <Sparkles className="w-8 h-8 text-blue-400 animate-pulse" />
+                                <Sparkles className="w-8 h-8 text-[var(--chart-5)] animate-pulse" />
                             </div>
                         </div>
 
                         <h3 className="text-2xl font-bold text-text1 mb-2">{loadingMessage}</h3>
                         <p className="text-muted">
-                            {t('applyingStyle')} <span className="text-blue-400">"{selectedTrend?.title}"</span> {t('styleSuffix')}
+                            {t('applyingStyle')} <span className="text-[var(--chart-5)]">"{selectedTrend?.title}"</span> {t('styleSuffix')}
                         </p>
                     </div>
                 </div>
@@ -631,10 +636,10 @@ Apply this viral formula to my video.`;
                     <div className="flex items-center justify-between mb-4" style={{ flexDirection: isRTL ? 'row-reverse' : 'row' }}>
                         <div style={{ textAlign: isRTL ? 'right' : 'left' }}>
                             <div className="flex items-center gap-2 mb-1" style={{ flexDirection: isRTL ? 'row-reverse' : 'row' }}>
-                                <span className="bg-green-500/20 text-green-400 text-xs px-3 py-1 rounded-full border border-green-500/30 font-medium">
+                                <span className="bg-green-500/20 text-[var(--success-fg)] text-xs px-3 py-1 rounded-full border border-green-500/30 font-medium">
                                     ✓ {t('blueprintReady')}
                                 </span>
-                                <span className="bg-blue-500/20 text-blue-300 text-xs px-3 py-1 rounded-full border border-blue-500/30">
+                                <span className="bg-blue-500/20 text-[var(--chart-5)] text-xs px-3 py-1 rounded-full border border-blue-500/30">
                                     {blueprint.trend_applied}
                                 </span>
                             </div>
@@ -651,7 +656,7 @@ Apply this viral formula to my video.`;
                             </button>
                             <button
                                 onClick={handleReset}
-                                className="flex items-center gap-2 px-4 py-2 text-blue-400 hover:text-blue-300 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 rounded-lg transition-all"
+                                className="flex items-center gap-2 px-4 py-2 text-[var(--chart-5)] hover:text-[var(--chart-5)] bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 rounded-lg transition-all"
                                 style={{ flexDirection: isRTL ? 'row-reverse' : 'row' }}
                             >
                                 <RotateCcw className="w-4 h-4" />
@@ -663,7 +668,7 @@ Apply this viral formula to my video.`;
                     {/* Hook Line */}
                     {blueprint.hook_line && (
                         <div className="bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border border-yellow-500/20 rounded-xl p-3 mb-4">
-                            <p className="text-yellow-400 text-xs font-semibold mb-1">🎣 {t('openingHook')}</p>
+                            <p className="text-[var(--warn-fg)] text-xs font-semibold mb-1">🎣 {t('openingHook')}</p>
                             <p className="text-white text-lg font-medium">"{blueprint.hook_line}"</p>
                         </div>
                     )}
@@ -673,7 +678,7 @@ Apply this viral formula to my video.`;
                         {/* Characters */}
                         {blueprint.characters?.length > 0 && (
                             <div className="bg-surface border border-border rounded-xl p-4">
-                                <h4 className="text-sm font-bold text-blue-400 mb-3 flex items-center gap-2" style={{ flexDirection: isRTL ? 'row-reverse' : 'row' }}>
+                                <h4 className="text-sm font-bold text-[var(--chart-5)] mb-3 flex items-center gap-2" style={{ flexDirection: isRTL ? 'row-reverse' : 'row' }}>
                                     <span className="w-6 h-6 bg-blue-500/20 rounded-lg flex items-center justify-center text-xs">🎭</span>
                                     {t('charactersSection')}
                                 </h4>
@@ -695,7 +700,7 @@ Apply this viral formula to my video.`;
                             <div key={idx} className="bg-surface border border-border rounded-xl p-4">
                                 <div className="flex items-center justify-between mb-3" style={{ flexDirection: isRTL ? 'row-reverse' : 'row' }}>
                                     <div className="flex items-center gap-3" style={{ flexDirection: isRTL ? 'row-reverse' : 'row' }}>
-                                        <span className="w-8 h-8 bg-blue-500/20 rounded-lg flex items-center justify-center text-blue-400 font-bold text-sm">
+                                        <span className="w-8 h-8 bg-blue-500/20 rounded-lg flex items-center justify-center text-[var(--chart-5)] font-bold text-sm">
                                             {scene.scene_number}
                                         </span>
                                         <span className="text-white font-semibold">{t('scene')} {scene.scene_number}</span>
@@ -707,20 +712,20 @@ Apply this viral formula to my video.`;
 
                                 <div className="space-y-4 text-sm">
                                     <div>
-                                        <p className="text-green-400 text-xs font-semibold mb-1.5">📽️ {t('visual')}</p>
+                                        <p className="text-[var(--success-fg)] text-xs font-semibold mb-1.5">📽️ {t('visual')}</p>
                                         <p className="text-text2 leading-relaxed" dir="ltr">{scene.visual_script}</p>
                                     </div>
                                     <div>
-                                        <p className="text-yellow-400 text-xs font-semibold mb-1.5">💬 {t('dialogue')}</p>
+                                        <p className="text-[var(--warn-fg)] text-xs font-semibold mb-1.5">💬 {t('dialogue')}</p>
                                         <p className="text-text2 leading-relaxed">{scene.dialogue_script}</p>
                                     </div>
                                     <div>
-                                        <p className="text-blue-400 text-xs font-semibold mb-1.5">🔊 {t('audio')}</p>
+                                        <p className="text-[var(--chart-5)] text-xs font-semibold mb-1.5">🔊 {t('audio')}</p>
                                         <p className="text-text2 leading-relaxed">{scene.audio_notes}</p>
                                     </div>
                                     {scene.universal_prompt && (
                                         <div className="bg-black/30 rounded-lg p-3 border border-border">
-                                            <p className="text-cyan-400 text-xs font-semibold mb-1.5">🎨 {t('imagePrompt')}</p>
+                                            <p className="text-[var(--chart-3)] text-xs font-semibold mb-1.5">🎨 {t('imagePrompt')}</p>
                                             <p className="text-muted text-xs font-mono leading-relaxed" dir="ltr">{scene.universal_prompt}</p>
                                         </div>
                                     )}
@@ -733,7 +738,7 @@ Apply this viral formula to my video.`;
                     <div className="mt-4 pt-3 border-t border-border">
                         <button
                             onClick={handleCopy}
-                            className="w-full py-3 bg-gradient-to-r from-blue-600 to-sky-600 hover:from-blue-500 hover:to-sky-500 text-white font-semibold rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-900/20"
+                            className="w-full py-3 bg-gradient-to-r from-[var(--cta-1)] to-[var(--cta-2)] hover:opacity-90 text-white font-semibold rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-900/20"
                             style={{ flexDirection: isRTL ? 'row-reverse' : 'row' }}
                         >
                             {copied ? (

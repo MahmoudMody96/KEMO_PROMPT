@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { useAppContext } from '../../context/AppContext';
 import { useToast } from '../ui/Toast';
+import { useCopyFeedback } from '../../lib/useCopyFeedback';
 import {
     Video,
     Image,
@@ -21,15 +22,10 @@ import { analyze_video, analyze_image } from '../../api/promptApi';
 
 // Code Block with Smart Import Button
 const CodeBlock = ({ title, content, icon: Icon, onUseInArchitect, showImport = false }) => {
-    const [copied, setCopied] = useState(false);
+    const { copied, copy } = useCopyFeedback();
     const { t } = useAppContext();
 
-    const handleCopy = async () => {
-        const textContent = typeof content === 'object' ? JSON.stringify(content, null, 2) : content;
-        await navigator.clipboard.writeText(textContent);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-    };
+    const handleCopy = () => copy(content);
 
     if (!content) return null;
 
@@ -46,7 +42,7 @@ const CodeBlock = ({ title, content, icon: Icon, onUseInArchitect, showImport = 
                 </div>
                 <div className="flex items-center gap-2">
                     <button onClick={handleCopy} className="btn btn-secondary text-xs">
-                        {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                        {copied ? <Check className="w-3 h-3 text-[var(--success-fg)]" /> : <Copy className="w-3 h-3" />}
                         <span>{copied ? '✓' : 'Copy'}</span>
                     </button>
                     {showImport && onUseInArchitect && (
@@ -138,7 +134,12 @@ ${result.universal_prompt}`;
                 setImagePrompt(JSON.stringify(result, null, 2));
             }
         } catch (error) {
+            // Surface it: the spinner stopping with no output looked identical
+            // to success with an empty result.
             console.error('Image extraction error:', error);
+            toast.error(error?.message || (isRTL
+                ? 'فشل تحليل الصورة — جرّب تاني'
+                : 'Image analysis failed — please try again'));
         } finally {
             setIsExtractingImage(false);
         }
@@ -154,7 +155,7 @@ ${result.universal_prompt}`;
         <div className="card h-full flex flex-col">
             <div className={`card-header ${isRTL ? 'text-right' : ''}`}>
                 <div className={`flex items-center gap-2.5 ${isRTL ? 'flex-row-reverse' : ''}`}>
-                    <div className="w-8 h-8 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400">
+                    <div className="w-8 h-8 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-[var(--brand-fg)]">
                         <Image className="w-4 h-4" />
                     </div>
                     <div>
@@ -166,7 +167,12 @@ ${result.universal_prompt}`;
 
             <div className="card-body flex-1 flex flex-col space-y-3">
                 {!preview ? (
-                    <div
+                    // A <label> wrapping the file input, rather than a <div
+                    // onClick> that reached for the input by getElementById.
+                    // This is keyboard-operable for free, announces itself, and
+                    // does not break if the component is ever rendered twice
+                    // (duplicate ids).
+                    <label
                         onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
                         onDragLeave={() => setIsDragging(false)}
                         onDrop={handleDrop}
@@ -174,21 +180,20 @@ ${result.universal_prompt}`;
               border-2 border-dashed rounded-xl p-8
               flex flex-col items-center justify-center
               transition-all cursor-pointer min-h-[200px]
-              ${isDragging ? 'border-blue-500 bg-blue-500/5' : 'border-border hover:border-zinc-600 bg-bg1/30'}
+              focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/25
+              ${isDragging ? 'border-blue-500 bg-blue-500/5' : 'border-border hover:border-border bg-bg1/30'}
             `}
-                        onClick={() => document.getElementById('image-input').click()}
                     >
-                        <Upload className={`w-10 h-10 mb-3 ${isDragging ? 'text-blue-400' : 'text-muted'}`} />
+                        <Upload className={`w-10 h-10 mb-3 ${isDragging ? 'text-[var(--chart-5)]' : 'text-muted'}`} />
                         <p className="text-sm font-medium text-text2 mb-1">{t('dragDropImage')}</p>
-                        <p className="text-xs text-zinc-600">{t('browseImageFormats')}</p>
+                        <p className="text-xs text-muted">{t('browseImageFormats')}</p>
                         <input
-                            id="image-input"
                             type="file"
                             accept="image/*"
                             onChange={(e) => handleFileSelect(e.target.files[0])}
-                            className="hidden"
+                            className="sr-only"
                         />
-                    </div>
+                    </label>
                 ) : (
                     <div className="relative group">
                         <img src={preview} alt="Preview" className="w-full h-44 object-cover rounded-xl" />
@@ -331,7 +336,7 @@ ${result.universal_prompt || 'N/A'}`;
             {/* Header */}
             <div className={`card-header ${isRTL ? 'text-right' : ''}`}>
                 <div className={`flex items-center gap-2.5 ${isRTL ? 'flex-row-reverse' : ''}`}>
-                    <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
+                    <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-[var(--chart-5)]">
                         <Video className="w-4 h-4" />
                     </div>
                     <div>
@@ -346,7 +351,7 @@ ${result.universal_prompt || 'N/A'}`;
 
                 {/* ELEMENT A: Large File Dropzone (Top) */}
                 {!selectedVideo ? (
-                    <div
+                    <label
                         onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
                         onDragLeave={() => setIsDragging(false)}
                         onDrop={handleDrop}
@@ -354,26 +359,25 @@ ${result.universal_prompt || 'N/A'}`;
               border-2 border-dashed rounded-xl
               flex flex-col items-center justify-center
               transition-all cursor-pointer min-h-[200px]
-              ${isDragging ? 'border-blue-500 bg-blue-500/5' : 'border-border hover:border-zinc-600 bg-bg1'}
+              focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/25
+              ${isDragging ? 'border-blue-500 bg-blue-500/5' : 'border-border hover:border-border bg-bg1'}
             `}
-                        onClick={() => document.getElementById('video-input').click()}
                     >
-                        <Film className={`w-12 h-12 mb-4 ${isDragging ? 'text-blue-400' : 'text-muted'}`} />
+                        <Film className={`w-12 h-12 mb-4 ${isDragging ? 'text-[var(--chart-5)]' : 'text-muted'}`} />
                         <p className="text-sm font-medium text-text1 mb-1">{t('dragDropVideo')}</p>
                         <p className="text-xs text-muted">{t('browseVideoFormats')}</p>
                         <input
-                            id="video-input"
                             type="file"
                             accept="video/*"
                             onChange={(e) => handleFileSelect(e.target.files[0])}
-                            className="hidden"
+                            className="sr-only"
                         />
-                    </div>
+                    </label>
                 ) : (
                     <div className="rounded-xl bg-bg1 border border-border p-4">
                         <div className="flex items-center gap-3">
                             <div className="w-14 h-14 rounded-lg bg-blue-500/20 flex items-center justify-center flex-shrink-0">
-                                <Film className="w-7 h-7 text-blue-400" />
+                                <Film className="w-7 h-7 text-[var(--chart-5)]" />
                             </div>
                             <div className="flex-1 min-w-0">
                                 <p className="text-sm font-medium text-white truncate">{selectedVideo.name}</p>
@@ -382,7 +386,7 @@ ${result.universal_prompt || 'N/A'}`;
                             <button
                                 onClick={handleRemoveVideo}
                                 disabled={isAnalyzingVideo}
-                                className="p-2 rounded-lg hover:bg-zinc-600 text-text2 hover:text-white transition-colors"
+                                className="p-2 rounded-lg hover:bg-bg2 text-text2 hover:text-white transition-colors"
                             >
                                 <X className="w-4 h-4" />
                             </button>
@@ -405,8 +409,8 @@ ${result.universal_prompt || 'N/A'}`;
 
                 {/* Info Badge */}
                 <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-500/10 border border-blue-500/20">
-                    <Clock className="w-4 h-4 text-blue-400 flex-shrink-0" />
-                    <span className="text-xs text-blue-300">{t('videoFrameInfo')}</span>
+                    <Clock className="w-4 h-4 text-[var(--chart-5)] flex-shrink-0" />
+                    <span className="text-xs text-[var(--chart-5)]">{t('videoFrameInfo')}</span>
                 </div>
 
 

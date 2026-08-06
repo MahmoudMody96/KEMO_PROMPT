@@ -53,68 +53,100 @@ export const scoreScenePrompt = (prompt) => {
  * Validate consistency across all scenes
  * Returns: {valid, issues, stats}
  */
-export const validateConsistency = (scenes) => {
+const promptOf = (scene) => scene?.image_prompts?.scene_prompt || scene?.scene_prompt || "";
+
+/**
+ * Audit scene prompts for character and style drift.
+ *
+ * @param {Array}  scenes
+ * @param {Array} [characters] the generated character list, used as the
+ *        reference. Falls back to scene 1 when absent.
+ *
+ * Reference choice matters: this used to measure every scene against scene 1,
+ * so if scene 1 was itself wrong the whole set was reported "consistent" with a
+ * bad baseline — and a drifted scene 1 was never flagged at all. The character
+ * list is the actual source of truth, so drift is now measured against it and
+ * scene 1 is audited like any other scene.
+ */
+export const validateConsistency = (scenes, characters) => {
     if (!Array.isArray(scenes) || scenes.length === 0) {
         return { valid: true, issues: [], stats: { total_scenes: 0, high_severity: 0, medium_severity: 0, low_severity: 0 } };
     }
 
     const issues = [];
 
-    // Get Scene 1 reference data
-    const scene1Prompt = scenes[0]?.image_prompts?.scene_prompt || scenes[0]?.scene_prompt || "";
+    // Reference names come from the character list when we have one.
+    const charNames = (Array.isArray(characters) ? characters : [])
+        .map(c => (c?.name_en || c?.name_ar || '').trim())
+        .filter(Boolean);
 
-    // Extract CREF from Scene 1
+    const scene1Prompt = promptOf(scenes[0]);
     const crefMatch = scene1Prompt.match(/CREF:\s*([^-,]+)/);
-    const scene1CREF = crefMatch ? crefMatch[1].trim() : null;
+    const fallbackCREF = crefMatch ? crefMatch[1].trim() : null;
 
-    // Extract style keywords
-    const styleKeywords = ["Pixar", "Unreal Engine", "Octane", "Cinematic", "Anime", "Realistic", "3D Cute"];
-    const scene1Style = styleKeywords.find(s => scene1Prompt.includes(s));
+    // Style keywords are read from what the prompts actually contain rather
+    // than a fixed seven-item list, which covered only a fraction of the
+    // styles the app offers and silently skipped the check for the rest.
+    const styleSignature = (scene1Prompt.match(/--stylize \d+|--ar [\d:]+/g) || []).join(' ');
 
-    // Check each scene for consistency
     scenes.forEach((scene, i) => {
-        if (i === 0) return; // Skip Scene 1
+        const currentPrompt = promptOf(scene);
+        const sceneNo = i + 1;
 
-        const currentPrompt = scene?.image_prompts?.scene_prompt || scene?.scene_prompt || "";
-
-        // CREF consistency check
-        if (scene1CREF && !currentPrompt.includes(scene1CREF)) {
+        // Character presence — measured against the cast, not against scene 1.
+        if (charNames.length > 0) {
+            const mentionsAnyCharacter = charNames.some(n => currentPrompt.includes(n));
+            const hasCref = /CREF:/i.test(currentPrompt);
+            if (currentPrompt && !mentionsAnyCharacter && !hasCref) {
+                issues.push({
+                    scene: sceneNo,
+                    type: "CREF_MISMATCH",
+                    severity: "high",
+                    message: `Scene ${sceneNo}: no character reference — expected one of ${charNames.join(', ')}`
+                });
+            }
+        } else if (i > 0 && fallbackCREF && !currentPrompt.includes(fallbackCREF)) {
             issues.push({
-                scene: i + 1,
+                scene: sceneNo,
                 type: "CREF_MISMATCH",
                 severity: "high",
-                message: `Scene ${i + 1}: Character description differs from Scene 1 ("${scene1CREF}" missing)`
+                message: `Scene ${sceneNo}: character description differs from scene 1 ("${fallbackCREF}" missing)`
             });
         }
 
-        // Style consistency check
-        if (scene1Style && !currentPrompt.includes(scene1Style)) {
-            issues.push({
-                scene: i + 1,
-                type: "STYLE_CHANGE",
-                severity: "medium",
-                message: `Scene ${i + 1}: Style keyword "${scene1Style}" missing`
-            });
+        // Style/render parameter drift.
+        if (i > 0 && styleSignature && currentPrompt) {
+            const missing = styleSignature.split(' ').filter(tok => tok && !currentPrompt.includes(tok));
+            if (missing.length) {
+                issues.push({
+                    scene: sceneNo,
+                    type: "STYLE_CHANGE",
+                    severity: "medium",
+                    message: `Scene ${sceneNo}: render parameters differ (${missing.join(', ')} missing)`
+                });
+            }
         }
 
-        // Word count check
-        const wordCount = currentPrompt.split(" ").length;
-        if (wordCount < 50) {
+        // Missing is checked before length, and short-circuits it: an empty
+        // string splits to one element, so the old order reported the same
+        // scene as both "too short (1 words)" and "missing".
+        if (!currentPrompt.trim()) {
             issues.push({
-                scene: i + 1,
-                type: "LENGTH_SHORT",
-                severity: "low",
-                message: `Scene ${i + 1}: Prompt too short (${wordCount} words, expected 60-80)`
-            });
-        }
-
-        // Empty prompt check
-        if (!currentPrompt) {
-            issues.push({
-                scene: i + 1,
+                scene: sceneNo,
                 type: "MISSING_PROMPT",
                 severity: "high",
-                message: `Scene ${i + 1}: scene_prompt is missing or empty`
+                message: `Scene ${sceneNo}: scene_prompt is missing or empty`
+            });
+            return;
+        }
+
+        const wordCount = currentPrompt.trim().split(/\s+/).length;
+        if (wordCount < 50) {
+            issues.push({
+                scene: sceneNo,
+                type: "LENGTH_SHORT",
+                severity: "low",
+                message: `Scene ${sceneNo}: prompt is short (${wordCount} words, 60-80 recommended)`
             });
         }
     });

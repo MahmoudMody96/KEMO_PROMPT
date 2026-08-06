@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useId, useState, useRef } from 'react';
 import { HelpCircle } from 'lucide-react';
 
 const HelpTooltip = ({ text, size = 14 }) => {
@@ -6,6 +6,7 @@ const HelpTooltip = ({ text, size = 14 }) => {
     const [position, setPosition] = useState('top');
     const triggerRef = useRef(null);
     const tooltipRef = useRef(null);
+    const tooltipId = useId();
 
     // Measure at the moment the tooltip opens rather than in an effect that
     // reacts to `show` — the effect version renders once at the wrong position
@@ -28,10 +29,15 @@ const HelpTooltip = ({ text, size = 14 }) => {
                 onMouseLeave={close}
                 onFocus={open}
                 onBlur={close}
-                className="inline-flex items-center justify-center rounded-full text-zinc-500 hover:text-zinc-300 hover:bg-white/10 transition-all duration-200 cursor-help outline-none focus:ring-1 focus:ring-white/20"
+                onKeyDown={(e) => { if (e.key === 'Escape') close(); }}
+                className="inline-flex items-center justify-center rounded-full text-muted hover:text-text2 hover:bg-white/10 transition-all duration-200 cursor-help outline-none focus:ring-1 focus:ring-white/20"
                 style={{ width: size, height: size }}
-                tabIndex={-1}
+                // tabIndex={-1} used to be here, which made the trigger
+                // unfocusable — and therefore made the onFocus/onBlur handlers
+                // above dead code. The help text on ~15 form fields was
+                // hover-only and unreachable by keyboard or screen reader.
                 aria-label="Help"
+                aria-describedby={show ? tooltipId : undefined}
             >
                 <HelpCircle style={{ width: size - 2, height: size - 2 }} />
             </button>
@@ -39,10 +45,12 @@ const HelpTooltip = ({ text, size = 14 }) => {
             {show && (
                 <span
                     ref={tooltipRef}
+                    id={tooltipId}
+                    role="tooltip"
                     className={`
                         absolute z-[9999] px-3 py-2 text-[11px] leading-relaxed
                         rounded-lg border border-white/10
-                        bg-zinc-900/95 backdrop-blur-xl text-zinc-200
+                        bg-zinc-900/95 backdrop-blur-xl text-text1
                         shadow-xl shadow-black/40
                         whitespace-normal max-w-[220px] min-w-[120px]
                         pointer-events-none select-none

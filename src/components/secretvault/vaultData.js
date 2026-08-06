@@ -2,14 +2,14 @@
 // 8 categories × 3 prompts = 24 elite prompts
 
 export const VAULT_CATEGORIES = [
-    { id: 'ai', labelEn: 'AI & Prompt Engineering', labelAr: 'الذكاء الاصطناعي وهندسة البرومبت', icon: '🧠', color: '#8b5cf6', bg: 'rgba(139,92,246,0.1)' },
-    { id: 'marketing', labelEn: 'Growth Marketing', labelAr: 'التسويق والنمو', icon: '📈', color: '#f59e0b', bg: 'rgba(245,158,11,0.1)' },
-    { id: 'software', labelEn: 'Software Engineering', labelAr: 'هندسة البرمجيات', icon: '💻', color: '#3b82f6', bg: 'rgba(59,130,246,0.1)' },
-    { id: 'copywriting', labelEn: 'Content & Copywriting', labelAr: 'كتابة المحتوى والإعلانات', icon: '✍️', color: '#ec4899', bg: 'rgba(236,72,153,0.1)' },
-    { id: 'data', labelEn: 'Data & Analytics', labelAr: 'البيانات والتحليلات', icon: '📊', color: '#14b8a6', bg: 'rgba(20,184,166,0.1)' },
-    { id: 'creative', labelEn: 'Creative & Design', labelAr: 'الإبداع والتصميم', icon: '🎨', color: '#f97316', bg: 'rgba(249,115,22,0.1)' },
-    { id: 'research', labelEn: 'Research & Academic', labelAr: 'البحث الأكاديمي', icon: '📚', color: '#6366f1', bg: 'rgba(99,102,241,0.1)' },
-    { id: 'business', labelEn: 'Business Strategy', labelAr: 'استراتيجية الأعمال', icon: '💼', color: '#22c55e', bg: 'rgba(34,197,94,0.1)' },
+    { id: 'ai', labelEn: 'AI & Prompt Engineering', labelAr: 'الذكاء الاصطناعي وهندسة البرومبت', icon: '🧠', color: 'var(--chart-6)', bg: 'color-mix(in srgb, var(--chart-6) 10%, transparent)' },
+    { id: 'marketing', labelEn: 'Growth Marketing', labelAr: 'التسويق والنمو', icon: '📈', color: 'var(--chart-4)', bg: 'color-mix(in srgb, var(--chart-4) 10%, transparent)' },
+    { id: 'software', labelEn: 'Software Engineering', labelAr: 'هندسة البرمجيات', icon: '💻', color: 'var(--chart-5)', bg: 'color-mix(in srgb, var(--chart-5) 10%, transparent)' },
+    { id: 'copywriting', labelEn: 'Content & Copywriting', labelAr: 'كتابة المحتوى والإعلانات', icon: '✍️', color: 'var(--chart-8)', bg: 'color-mix(in srgb, var(--chart-8) 10%, transparent)' },
+    { id: 'data', labelEn: 'Data & Analytics', labelAr: 'البيانات والتحليلات', icon: '📊', color: 'var(--chart-2)', bg: 'color-mix(in srgb, var(--chart-2) 10%, transparent)' },
+    { id: 'creative', labelEn: 'Creative & Design', labelAr: 'الإبداع والتصميم', icon: '🎨', color: 'var(--chart-9)', bg: 'color-mix(in srgb, var(--chart-9) 10%, transparent)' },
+    { id: 'research', labelEn: 'Research & Academic', labelAr: 'البحث الأكاديمي', icon: '📚', color: 'var(--chart-1)', bg: 'color-mix(in srgb, var(--chart-1) 10%, transparent)' },
+    { id: 'business', labelEn: 'Business Strategy', labelAr: 'استراتيجية الأعمال', icon: '💼', color: 'var(--chart-2)', bg: 'color-mix(in srgb, var(--chart-2) 10%, transparent)' },
 ];
 
 export const VAULT_PROMPTS = [

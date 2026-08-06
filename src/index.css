@@ -11,7 +11,16 @@
     --border-color: #E2E8F0;
     --text-primary: #1e293b;
     --text-secondary: #475569;
-    --text-muted: #94a3b8;
+    /* Was #94a3b8 — only 2.56:1 on white, far below the 4.5:1 AA minimum for
+       normal text, and .text-zinc-500/600 both map onto this token, so the
+       failure covered most secondary text in the app.
+
+       #64748b was the first correction, but it was measured against pure white
+       and only reaches 4.48:1 on --bg-app (#F6F8FC), which is the surface most
+       muted text actually sits on. #5c6a80 clears both: 5.16:1 on the app
+       background, 5.49:1 on cards.
+       (Dark mode's #8B95B3 already passes at 6.76:1 and is unchanged.) */
+    --text-muted: #5c6a80;
     --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.06), 0 4px 16px rgba(0, 0, 0, 0.04);
     --shadow-glow: 0 6px 18px rgba(108, 92, 255, 0.18);
     --primary: #6C5CFF;
@@ -53,6 +62,65 @@
     /* Spinner color */
     --spinner-track: rgba(0, 0, 0, 0.15);
     --spinner-fill: var(--text-primary);
+
+    /* ── Brand ramp (LIGHT) ───────────────────────────────────────
+       Three stops so gradients have a direction instead of being a
+       flat tint. Held to the existing indigo-violet identity rather
+       than introducing a new hue. */
+    --brand-1: #6C5CFF;
+    --brand-2: #7C6BFF;
+    --brand-3: #4DA3FF;
+
+    /* Brand-derived surfaces. Deliberately weak in light mode: the
+       same alpha that reads as a glow on near-black turns into muddy
+       low-contrast text backing on white. */
+    --brand-tint: rgba(108, 92, 255, 0.08);
+    --brand-border: rgba(108, 92, 255, 0.18);
+    --brand-border-strong: rgba(108, 92, 255, 0.36);
+    --brand-fg: #4F46E5;
+
+    /* CTA ramp — the ONLY brand gradient that may sit under white text.
+       The decorative ramp above is tuned to glow, which makes it far too
+       light to carry a label: white on --brand-3 measures 2.6:1, and even
+       the indigo end only reaches 4.55:1. Every filled button used it, so
+       the primary action on each page failed AA. These two stops keep the
+       indigo→blue identity while staying dark enough (5.2–6.3:1 with white
+       across the whole sweep). Identical in both themes: the text is white
+       either way, so the requirement does not change with the background. */
+    --cta-1: #4F46E5;
+    --cta-2: #2563EB;
+
+    /* Categorical accents for charts, badges and stat tiles. These are the
+       only colours in the system that carry meaning by hue, so they can't
+       collapse to the brand ramp — but they still have to flip per theme.
+       Light mode uses 600/700-level shades: the 400-level tints that read
+       well on near-black measure 1.5–2.4:1 on a near-white card. */
+    --chart-1: #4338CA;
+    --chart-2: #065F46;
+    --chart-3: #0369A1;
+    --chart-4: #9A3412;
+    --chart-5: #1D4ED8;
+    --chart-6: #6D28D9;
+    --chart-7: #92400E;
+    --chart-8: #9D174D;
+    --chart-9: #7C2D12;
+
+    /* Semantic status foregrounds. Tailwind's 400-level red/emerald/amber
+       are built for dark surfaces and land at 2.4–2.9:1 on a light one. */
+    --success-fg: #065F46;
+    --danger-fg: #B91C1C;
+    --warn-fg: #92400E;
+
+    --glass-bg: rgba(255, 255, 255, 0.72);
+    --glass-border: rgba(15, 23, 42, 0.08);
+
+    /* Ambient blooms are nearly invisible on white — enough to warm
+       the page, never enough to fight the text. */
+    --ambient-strength: 0.10;
+
+    --elevation-1: 0 1px 2px rgba(15, 23, 42, 0.06);
+    --elevation-2: 0 4px 16px rgba(15, 23, 42, 0.08);
+    --elevation-3: 0 12px 32px rgba(15, 23, 42, 0.12);
   }
 
   [data-theme="dark"] {
@@ -104,6 +172,47 @@
     /* Spinner color */
     --spinner-track: rgba(255, 255, 255, 0.30);
     --spinner-fill: #FFFFFF;
+
+    /* ── Brand ramp (DARK) ────────────────────────────────────────
+       Lifted a step: the light-mode ramp is too dense to read as a
+       glow against #0B0F19. */
+    --brand-1: #7C6BFF;
+    --brand-2: #9B8CFF;
+    --brand-3: #58B0FF;
+
+    --brand-tint: rgba(124, 107, 255, 0.14);
+    --brand-border: rgba(124, 107, 255, 0.28);
+    --brand-border-strong: rgba(124, 107, 255, 0.55);
+    --brand-fg: #B7ACFF;
+
+    /* Unchanged from light: white text needs a dark backing in either theme. */
+    --cta-1: #4F46E5;
+    --cta-2: #2563EB;
+
+    /* Dark counterparts: 400-level, bright enough to clear 4.5:1 on the
+       near-black surfaces while keeping the same hue identity as light. */
+    --chart-1: #818CF8;
+    --chart-2: #34D399;
+    --chart-3: #38BDF8;
+    --chart-4: #FBBF24;
+    --chart-5: #60A5FA;
+    --chart-6: #A78BFA;
+    --chart-7: #FCD34D;
+    --chart-8: #F472B6;
+    --chart-9: #FB923C;
+
+    --success-fg: #34D399;
+    --danger-fg: #F87171;
+    --warn-fg: #FBBF24;
+
+    --glass-bg: rgba(18, 24, 43, 0.62);
+    --glass-border: rgba(255, 255, 255, 0.09);
+
+    --ambient-strength: 0.42;
+
+    --elevation-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --elevation-2: 0 8px 24px rgba(0, 0, 0, 0.45);
+    --elevation-3: 0 18px 44px rgba(0, 0, 0, 0.55);
   }
 
   html {
@@ -198,11 +307,21 @@
   }
 
   :root:not([data-theme="dark"]) .text-white\/90,
-  :root:not([data-theme="dark"]) .hover\:text-white:hover {
+  :root:not([data-theme="dark"]) .hover\:text-white:hover:not(.on-brand) {
     color: var(--text-primary) !important;
   }
 
-  :root:not([data-theme="dark"]) .text-white:not(.btn-primary *):not([class*="bg-gradient"]):not([class*="from-"]) {
+  /* Light-mode shim for markup written when the app was dark-only: bare
+     `text-white` would be invisible on a white page, so it is rewritten to the
+     primary text colour.
+     The escape hatches used to be class-based only (.btn-primary, bg-gradient-*,
+     from-*), which silently misfired on anything that paints its background
+     through an inline `style` — a selector cannot see inline styles. Every
+     filled CTA in the identity layer does exactly that, so in light mode the
+     primary button on each page rendered dark navy on dark indigo (2.8:1).
+     `.on-brand` is the explicit opt-out: it marks an element that sits on a
+     brand-coloured surface and therefore genuinely wants white. */
+  :root:not([data-theme="dark"]) .text-white:not(.on-brand):not(.btn-primary *):not([class*="bg-gradient"]):not([class*="from-"]) {
     color: var(--text-primary) !important;
   }
 
@@ -253,7 +372,202 @@
   }
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   DESIGN IDENTITY LAYER
+   ───────────────────────────────────────────────────────────────
+   One vocabulary every page draws from, so pages stop inventing
+   their own look. Previously the homepage alone carried 61
+   hardcoded colour literals and a fixed dark gradient that made it
+   the only surface in the app that ignored the light theme.
+
+   Everything here is token-driven and works in both themes.
+   ═══════════════════════════════════════════════════════════════ */
 @layer components {
+
+  /* ── Brand ─────────────────────────────────────────────────── */
+  .brand-text {
+    background-image: linear-gradient(115deg, var(--brand-1), var(--brand-2) 45%, var(--brand-3));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  /* ── Ambient backdrop ──────────────────────────────────────────
+     Soft light blooms behind content. In light mode they stay very
+     faint so text contrast is never harmed. */
+  .ambient {
+    position: relative;
+    isolation: isolate;
+  }
+
+  .ambient::before,
+  .ambient::after {
+    content: '';
+    position: absolute;
+    z-index: -1;
+    border-radius: 9999px;
+    filter: blur(72px);
+    opacity: var(--ambient-strength);
+    pointer-events: none;
+  }
+
+  .ambient::before {
+    inline-size: 34rem;
+    block-size: 34rem;
+    inset-block-start: -12rem;
+    inset-inline-end: -10rem;
+    background: radial-gradient(circle, var(--brand-1), transparent 68%);
+  }
+
+  .ambient::after {
+    inline-size: 28rem;
+    block-size: 28rem;
+    inset-block-end: -14rem;
+    inset-inline-start: -8rem;
+    background: radial-gradient(circle, var(--brand-3), transparent 68%);
+  }
+
+  /* ── Surfaces ──────────────────────────────────────────────── */
+  .surface-glass {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    backdrop-filter: blur(16px) saturate(140%);
+    -webkit-backdrop-filter: blur(16px) saturate(140%);
+  }
+
+  /* Interactive card: lifts and reveals a hairline of brand light. */
+  .surface-card {
+    position: relative;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: 18px;
+    transition: transform 220ms cubic-bezier(0.16, 1, 0.3, 1),
+                border-color 220ms ease,
+                box-shadow 220ms ease;
+  }
+
+  .surface-card::after {
+    content: '';
+    position: absolute;
+    inset-block-start: 0;
+    inset-inline: 12%;
+    block-size: 1px;
+    background: linear-gradient(90deg, transparent, var(--brand-2), transparent);
+    opacity: 0;
+    transition: opacity 220ms ease;
+  }
+
+  .surface-card:hover {
+    transform: translateY(-3px);
+    border-color: var(--brand-border-strong);
+    box-shadow: var(--elevation-3);
+  }
+
+  .surface-card:hover::after { opacity: 0.85; }
+
+  /* ── Section rhythm ────────────────────────────────────────── */
+  .section-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.3rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: var(--brand-fg);
+    background: var(--brand-tint);
+    border: 1px solid var(--brand-border);
+  }
+
+  .section-title {
+    font-size: clamp(1.375rem, 1.1rem + 1.3vw, 2rem);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+    color: var(--text-primary);
+  }
+
+  .section-sub {
+    color: var(--text-muted);
+    font-size: 0.9375rem;
+    line-height: 1.65;
+    max-inline-size: 46ch;
+  }
+
+  /* ── Accent text ───────────────────────────────────────────────
+     Per-tool accents are picked to glow on the dark surface, where
+     they measure 4.5-8.2:1. The same hues on white collapse — sky
+     hits 2.14:1 and amber 2.15:1, both well under AA.
+
+     Rather than maintain two hex values per tool, light mode mixes
+     the accent toward ink. The hue stays recognisable, the contrast
+     clears 4.5:1, and adding a tool needs only one colour. */
+  /* Lifted a touch on dark: the violet accent lands at 4.46:1 against the
+     card surface, just under AA. A small push toward white clears it without
+     shifting the hue perceptibly, and it scales to any accent added later. */
+  .accent-text {
+    color: color-mix(in srgb, var(--accent) 74%, #FFFFFF);
+  }
+
+  :root:not([data-theme="dark"]) .accent-text {
+    color: color-mix(in srgb, var(--accent) 55%, #0B1220);
+  }
+
+  /* Decorative step numerals. aria-hidden, so they carry no
+     information — but they were so faint they read as a rendering
+     fault rather than as ornament. */
+  .step-numeral {
+    color: var(--brand-fg);
+    opacity: 0.22;
+  }
+
+  /* ── Touch targets ─────────────────────────────────────────────
+     44×44 minimum wherever a finger is likely: any coarse pointer,
+     or any narrow viewport. Desktop keeps the tighter rhythm.
+
+     Both conditions are needed — `pointer: coarse` alone covers real
+     phones but never matches an emulated mobile viewport, so it
+     cannot be verified in a browser at 375px. Measured before this:
+     the hero CTA was 39px tall and the example chips 30px. */
+  @media (pointer: coarse), (max-width: 640px) {
+    .touch-target {
+      min-block-size: 44px;
+      min-inline-size: 44px;
+    }
+  }
+
+  /* ── Permanently dark surfaces ──────────────────────────────
+     Some panels (hero banners, media backdrops) stay dark in BOTH themes by
+     design. Their contents must not follow the page theme, or the light theme
+     paints dark-on-dark: the Secret Vault hero measured 1.2:1 that way.
+     Rebinding the tokens locally means every descendant — including the shim
+     that rewrites bare `text-white` — resolves against the real background
+     instead of the page's. */
+  .on-dark {
+    --text-primary: #FFFFFF;
+    --text-secondary: #C9D1E6;
+    --text-muted: #8B95B3;
+    --border-color: rgba(255, 255, 255, 0.10);
+    --success-fg: #34D399;
+    --danger-fg: #F87171;
+    --warn-fg: #FBBF24;
+    --brand-fg: #B7ACFF;
+    color: var(--text-secondary);
+  }
+
+  :root:not([data-theme="dark"]) .on-dark .text-white,
+  :root:not([data-theme="dark"]) .on-dark.text-white {
+    color: #FFFFFF !important;
+  }
+
+  /* ── Focus ─────────────────────────────────────────────────── */
+  .focus-ring:focus-visible {
+    outline: 2px solid var(--brand-2);
+    outline-offset: 2px;
+    border-radius: 12px;
+  }
+
   .card {
     @apply bg-surface border border-border shadow-card rounded-xl;
   }
@@ -327,7 +641,8 @@
   }
 
   .btn-primary {
-    @apply h-11 px-6 rounded-xl text-white bg-primary-gradient shadow-glow hover:shadow-lg hover:-translate-y-[1px];
+    @apply h-11 px-6 rounded-xl text-white shadow-glow hover:shadow-lg hover:-translate-y-[1px];
+    background-image: linear-gradient(135deg, var(--cta-1), var(--cta-2));
   }
 
   .btn-secondary {
@@ -413,5 +728,93 @@
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   MOTION
+   ───────────────────────────────────────────────────────────────
+   Expo-out easing throughout, so movement decelerates the way the
+   design system specifies. Entrances are 320-480ms; anything the
+   user triggers directly stays at 150-220ms so it feels immediate.
+   ═══════════════════════════════════════════════════════════════ */
+
+@keyframes riseIn {
+  from { opacity: 0; transform: translateY(18px) scale(0.985); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes floatSlow {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50%      { transform: translate3d(0, -14px, 0); }
+}
+
+/* Reveal on mount. --i staggers grid children without per-item CSS. */
+.rise {
+  animation: riseIn 460ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  animation-delay: calc(var(--i, 0) * 70ms);
+}
+
+.float-slow {
+  animation: floatSlow 9s ease-in-out infinite;
+}
+
+/* Press feedback — the design system's 0.97 scale. */
+.press {
+  transition: transform 150ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.press:active {
+  transform: scale(0.97);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   THEME SWITCH
+   ───────────────────────────────────────────────────────────────
+   Colour-transitioning elements whose colour comes from a custom
+   property can keep the previously resolved value when that property
+   changes — the transition never re-resolves it, so after toggling
+   the theme the sidebar labels stayed at the old theme's colour
+   while a freshly created element rendered correctly.
+
+   Suppressing transitions for the duration of the swap makes the
+   change a plain repaint, which resolves correctly. It also stops
+   the whole UI cross-fading, which looked sluggish anyway.
+   ═══════════════════════════════════════════════════════════════ */
+.theme-switching,
+.theme-switching *,
+.theme-switching *::before,
+.theme-switching *::after {
+  transition: none !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   REDUCED MOTION
+   ───────────────────────────────────────────────────────────────
+   The app previously honoured this nowhere, so every animation
+   played regardless of the OS setting — a vestibular-safety issue,
+   not a preference. Transforms are the part that causes trouble, so
+   opacity changes are allowed to finish quickly rather than snap.
+   ═══════════════════════════════════════════════════════════════ */
+@media (prefers-reduced-motion: reduce) {
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .rise,
+  .float-slow {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  .surface-card:hover {
+    transform: none !important;
   }
 }

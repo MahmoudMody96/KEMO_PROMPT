@@ -25,14 +25,19 @@ const CustomSelect = ({
             const updateRect = () => {
                 const r = triggerRef.current.getBoundingClientRect();
                 const dw = dropdownWidth || r.width;
-                // Center the wider dropdown over the trigger if possible
-                let left = r.left + window.scrollX;
+                // The menu is position:fixed, so it is placed in viewport
+                // coordinates — exactly what getBoundingClientRect returns. The
+                // scrollX/scrollY that used to be added here shifted the menu by
+                // the scroll offset, and only on one of the two branches, so the
+                // two paths disagreed with each other as well.
+                let left = r.left;
                 if (dw > r.width) {
+                    // Centre the wider dropdown over the trigger where possible.
                     left = Math.max(8, r.left - (dw - r.width) / 2);
                     if (left + dw > window.innerWidth - 8) left = window.innerWidth - dw - 8;
                 }
                 setRect({
-                    top: r.bottom + window.scrollY + 4,
+                    top: r.bottom + 4,
                     left,
                     width: dw,
                     maxHeight: window.innerHeight - r.bottom - 20
@@ -84,8 +89,12 @@ const CustomSelect = ({
                 <div
                     ref={listRef}
                     className="fixed z-[9999] overflow-hidden rounded-xl border border-white/10 shadow-2xl backdrop-blur-xl bg-zinc-900/95 animate-in fade-in zoom-in-95 duration-100"
+                    role="listbox"
                     style={{
-                        top: rect.top - window.scrollY,
+                        // rect.top is already viewport-relative; the previous
+                        // `- window.scrollY` here was compensating for the
+                        // scrollY that updateRect wrongly added.
+                        top: rect.top,
                         left: rect.left,
                         width: rect.width,
                         maxHeight: Math.min(400, rect.maxHeight || 400),
@@ -94,7 +103,7 @@ const CustomSelect = ({
                     {/* Optional Title Header */}
                     {title && (
                         <div className="px-3 py-2 border-b border-white/5 bg-white/[0.02]">
-                            <span className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">{title}</span>
+                            <span className="text-[11px] font-semibold text-text2 uppercase tracking-wider">{title}</span>
                         </div>
                     )}
 
@@ -102,17 +111,23 @@ const CustomSelect = ({
                         {options.map((opt, idx) => {
                             const isSelected = opt.value === value;
                             return (
-                                <div
+                                // A button, not a div: the trigger above was
+                                // already keyboard-reachable but the options were
+                                // not, so the control could be opened and never
+                                // used without a mouse.
+                                <button
+                                    type="button"
+                                    role="option"
+                                    aria-selected={isSelected}
                                     key={opt.value || idx}
                                     onClick={() => {
                                         onChange({ target: { value: opt.value } });
                                         setIsOpen(false);
                                     }}
-                                    className={`px-3 cursor-pointer transition-all duration-150 group
-                                        ${hasDescriptions ? 'py-2.5' : 'py-2.5'}
+                                    className={`w-full text-start px-3 py-2.5 cursor-pointer transition-all duration-150 group
                                         ${isSelected
                                             ? 'bg-primary/10 text-primary'
-                                            : 'text-zinc-300 hover:bg-white/5 hover:text-white'
+                                            : 'text-text2 hover:bg-white/5 hover:text-white'
                                         }
                                         ${idx < options.length - 1 && hasDescriptions ? 'border-b border-white/[0.03]' : ''}
                                     `}
@@ -133,15 +148,15 @@ const CustomSelect = ({
                                         {isSelected && <Check className="w-3.5 h-3.5 shrink-0" />}
                                     </div>
                                     {opt.description && (
-                                        <p className="text-[11px] text-zinc-500 mt-1 leading-relaxed pl-7 group-hover:text-zinc-400 transition-colors">
+                                        <p className="text-[11px] text-muted mt-1 leading-relaxed ps-7 group-hover:text-text2 transition-colors">
                                             {opt.description}
                                         </p>
                                     )}
-                                </div>
+                                </button>
                             );
                         })}
                         {options.length === 0 && (
-                            <div className="px-3 py-2 text-sm text-zinc-500 text-center">No options</div>
+                            <div className="px-3 py-2 text-sm text-muted text-center">No options</div>
                         )}
                     </div>
                 </div>,

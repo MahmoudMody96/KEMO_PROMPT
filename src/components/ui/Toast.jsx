@@ -52,13 +52,13 @@ const ToastItem = ({ toast, onDismiss }) => {
                 {toast.title && (
                     <p className="text-sm font-semibold text-white mb-0.5">{toast.title}</p>
                 )}
-                <p className="text-sm text-zinc-300 whitespace-pre-line">{toast.message}</p>
+                <p className="text-sm text-text2 whitespace-pre-line">{toast.message}</p>
             </div>
             <button
                 onClick={handleDismiss}
                 className="shrink-0 mt-0.5 p-0.5 rounded-md hover:bg-white/10 transition-colors"
             >
-                <X className="w-4 h-4 text-zinc-500" />
+                <X className="w-4 h-4 text-muted" />
             </button>
         </div>
     );
@@ -92,10 +92,23 @@ export const ToastProvider = ({ children }) => {
     return (
         <ToastContext.Provider value={toast}>
             {children}
-            {/* Toast Container */}
-            <div className="fixed bottom-4 right-4 z-[9999] flex flex-col gap-2 pointer-events-none">
+            {/* Toast Container
+                aria-live is essential here rather than cosmetic: toasts are the
+                only channel for generation, search and validation failures, so
+                without it a screen-reader user gets no failure notification at
+                all. Errors use role="alert" (assertive) and the rest polite, so
+                success messages do not interrupt what is being read. */}
+            <div
+                className="fixed bottom-4 right-4 z-[9999] flex flex-col gap-2 pointer-events-none"
+                aria-live="polite"
+                aria-atomic="false"
+            >
                 {toasts.map(t => (
-                    <div key={t.id} className="pointer-events-auto animate-slide-in-right">
+                    <div
+                        key={t.id}
+                        className="pointer-events-auto animate-slide-in-right"
+                        role={t.type === 'error' ? 'alert' : 'status'}
+                    >
                         <ToastItem toast={t} onDismiss={dismissToast} />
                     </div>
                 ))}
