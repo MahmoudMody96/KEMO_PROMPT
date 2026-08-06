@@ -2,6 +2,11 @@
 
 import config from '../config.js';
 
+// Long enough for a 30k-token completion, short enough that a hung provider
+// does not pin an Express handler (and the user's already-deducted credits)
+// until the platform kills the request.
+const UPSTREAM_TIMEOUT_MS = 120_000;
+
 export async function callOpenRouter(body) {
     return fetch(config.openRouter.url, {
         method: 'POST',
@@ -12,6 +17,7 @@ export async function callOpenRouter(body) {
             'X-Title': 'Kemo Engine',
         },
         body: JSON.stringify(body),
+        signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
     });
 }
 

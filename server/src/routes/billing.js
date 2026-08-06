@@ -3,7 +3,7 @@
 import crypto from 'node:crypto';
 import express from 'express';
 import config from '../config.js';
-import { query, queryOne } from '../db.js';
+import { query, queryOne, transaction } from '../db.js';
 import { requireAuth } from '../auth/middleware.js';
 import { makeLimiter } from '../lib/rateLimit.js';
 
@@ -44,7 +44,14 @@ router.post(
                 return res.status(400).json({ error: 'Unknown plan' });
             }
 
-            const redirect = (config.appUrl || req.headers.origin || '').replace(/\/$/, '');
+            // Never fall back to req.headers.origin: a caller could set it to
+            // their own domain and have LemonSqueezy land the buyer there right
+            // after a real payment — a high-credibility phishing hand-off.
+            if (!config.appUrl) {
+                console.error('[CHECKOUT] APP_URL is not configured');
+                return res.status(500).json({ error: 'Payments are not configured' });
+            }
+            const redirect = config.appUrl.replace(/\/$/, '');
 
             const response = await fetch('https://api.lemonsqueezy.com/v1/checkouts', {
                 method: 'POST',
@@ -128,20 +135,28 @@ router.post('/lemonsqueezy-webhook', async (req, res) => {
         const attributes = event.data?.attributes || {};
         console.log(`[WEBHOOK] ${eventName}`);
 
-        // A retried delivery must not grant credits twice.
-        const eventKey = `${eventName}:${event.data?.id}:${attributes.updated_at || ''}`;
-        try {
-            await query(
-                `INSERT INTO webhook_events (id, provider) VALUES ($1, 'lemonsqueezy')`,
-                [eventKey]
-            );
-        } catch (err) {
-            if (err.code === '23505') {
-                console.log(`[WEBHOOK] duplicate ${eventKey} — ignored`);
-                return res.json({ message: 'Duplicate, ignored' });
-            }
-            console.error('[WEBHOOK] idempotency check failed:', err.message);
+        // A valid signature proves the payload came from someone holding our
+        // webhook secret — not that it concerns our store. Reject anything else.
+        if (config.lemon.storeId &&
+            String(event.meta?.store_id || '') !== String(config.lemon.storeId)) {
+            console.error(`[WEBHOOK] store mismatch: ${event.meta?.store_id}`);
+            return res.status(400).json({ error: 'Unexpected store' });
         }
+
+        // A retried delivery must not grant credits twice.
+        //
+        // The key deliberately excludes attributes.updated_at: including it meant
+        // any redelivery whose timestamp had moved looked like a brand-new event
+        // and bypassed the guard entirely.
+        //
+        // Credit-granting events are keyed on the ORDER rather than the event, so
+        // order_created and subscription_payment_success for the same payment
+        // cannot both grant. Renewals carry a different order id and still grant.
+        const orderRef = String(attributes.order_id || event.data?.id || '');
+        const isGrantEvent = eventName === 'order_created' || eventName === 'subscription_payment_success';
+        const eventKey = isGrantEvent
+            ? `grant:${orderRef}`
+            : `${eventName}:${event.data?.id}`;
 
         // Prefer the id we attached at checkout; fall back to the buyer's email,
         // which is trustworthy because the payload is HMAC-verified.
@@ -170,17 +185,38 @@ router.post('/lemonsqueezy-webhook', async (req, res) => {
                     console.warn(`[WEBHOOK] unknown variant ${variantId}`);
                     return res.json({ message: 'Unknown variant' });
                 }
-                // ADD, never overwrite — overwriting deletes a balance the
-                // customer already paid for.
-                await query(
-                    'SELECT add_credits($1, $2, $3, $4)',
-                    [userId, info.credits, 'purchase', `${info.label} — order ${event.data?.id || ''}`]
-                );
-                await query(
-                    `UPDATE users SET plan = $1, lemon_customer_id = $2, lemon_order_id = $3
-                     WHERE id = $4`,
-                    [info.plan, String(attributes.customer_id || ''), String(event.data?.id || ''), userId]
-                );
+
+                // The dedupe marker and the grant commit together or not at all.
+                // Previously the marker auto-committed first, so a failure between
+                // the two left the marker recorded with no credits granted — the
+                // retry then saw a duplicate and the customer's purchase was lost
+                // permanently, with nothing in the ledger to find it by.
+                const granted = await transaction(async (client) => {
+                    const marker = await client.query(
+                        `INSERT INTO webhook_events (id, provider) VALUES ($1, 'lemonsqueezy')
+                         ON CONFLICT (id) DO NOTHING`,
+                        [eventKey]
+                    );
+                    if (marker.rowCount === 0) return false;
+
+                    // ADD, never overwrite — overwriting deletes a balance the
+                    // customer already paid for.
+                    await client.query(
+                        'SELECT add_credits($1, $2, $3, $4)',
+                        [userId, info.credits, 'purchase', `${info.label} — order ${orderRef}`]
+                    );
+                    await client.query(
+                        `UPDATE users SET plan = $1, lemon_customer_id = $2, lemon_order_id = $3
+                         WHERE id = $4`,
+                        [info.plan, String(attributes.customer_id || ''), orderRef, userId]
+                    );
+                    return true;
+                });
+
+                if (!granted) {
+                    console.log(`[WEBHOOK] duplicate ${eventKey} — ignored`);
+                    return res.json({ message: 'Duplicate, ignored' });
+                }
                 console.log(`[WEBHOOK] ${userId} → ${info.label} (+${info.credits})`);
                 break;
             }

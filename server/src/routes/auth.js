@@ -4,14 +4,14 @@
 // which half of the credentials was wrong.
 
 import express from 'express';
-import config from '../config.js';
 import { query, queryOne, transaction } from '../db.js';
 import {
     SESSION_COOKIE, burnPasswordTime, createSession, hashPassword,
     revokeSession, sessionCookieOptions, verifyPassword,
 } from '../auth/sessions.js';
-import { requireAuth, USER_COLUMNS } from '../auth/middleware.js';
+import { readToken, requireAuth, USER_COLUMNS } from '../auth/middleware.js';
 import { makeLimiter } from '../lib/rateLimit.js';
+import { getSettings } from '../lib/settings.js';
 
 const router = express.Router();
 
@@ -22,7 +22,26 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // Brute force is the whole threat model for a login form.
 const loginLimiter = makeLimiter({ max: 10, windowMs: 15 * 60_000, key: 'login' });
+// Second gate on the ACCOUNT being targeted, not the caller's IP.
+//
+// The IP limit above depends on `trust proxy: 1` resolving to the real client,
+// which holds behind Traefik but not if the container is reachable directly —
+// there, X-Forwarded-For is forgeable and rotating it defeats the IP bucket
+// entirely. This one cannot be rotated away: guessing passwords for one account
+// trips it no matter where the requests appear to come from.
+const loginAccountLimiter = makeLimiter({
+    max: 10,
+    windowMs: 15 * 60_000,
+    key: 'login-acct',
+    keyFn: (req) => {
+        const email = req.body?.email;
+        return typeof email === 'string' && email ? email.trim().toLowerCase() : null;
+    },
+});
 const registerLimiter = makeLimiter({ max: 5, windowMs: 60 * 60_000, key: 'register' });
+// A hijacked session could otherwise brute-force currentPassword at full speed
+// to recover the plaintext — useful to an attacker for credential reuse.
+const passwordLimiter = makeLimiter({ max: 5, windowMs: 15 * 60_000, key: 'pwchange' });
 
 function validateCredentials(email, password) {
     if (typeof email !== 'string' || !EMAIL_RE.test(email) || email.length > MAX_EMAIL) {
@@ -64,6 +83,14 @@ router.post('/register', registerLimiter, async (req, res) => {
         const invalid = validateCredentials(email, password);
         if (invalid) return res.status(400).json({ error: invalid });
 
+        // The admin console's "Signup Enabled" toggle is enforced here rather
+        // than only hidden in the UI — a closed signup that still accepts a
+        // direct POST is not closed.
+        const settings = await getSettings();
+        if (!settings.signupEnabled) {
+            return res.status(403).json({ error: 'Registration is currently closed' });
+        }
+
         const normalizedEmail = email.trim();
         const name = String(displayName || '').trim().slice(0, 80)
             || normalizedEmail.split('@')[0];
@@ -80,14 +107,14 @@ router.post('/register', registerLimiter, async (req, res) => {
                 `INSERT INTO users (email, password_hash, display_name, credits_remaining)
                  VALUES ($1, $2, $3, $4)
                  RETURNING ${USER_COLUMNS}`,
-                [normalizedEmail, passwordHash, name, config.signupBonusCredits]
+                [normalizedEmail, passwordHash, name, settings.defaultCredits]
             );
 
             const created = rows[0];
             await client.query(
                 `INSERT INTO credit_transactions (user_id, amount, balance_after, transaction_type, description)
                  VALUES ($1, $2, $2, 'signup_bonus', 'Welcome credits')`,
-                [created.id, config.signupBonusCredits]
+                [created.id, settings.defaultCredits]
             );
             return created;
         });
@@ -112,7 +139,7 @@ router.post('/register', registerLimiter, async (req, res) => {
 });
 
 // --- POST /api/auth/login ----------------------------------------------
-router.post('/login', loginLimiter, async (req, res) => {
+router.post('/login', loginLimiter, loginAccountLimiter, async (req, res) => {
     try {
         const { email, password } = req.body || {};
         if (typeof email !== 'string' || typeof password !== 'string') {
@@ -146,7 +173,10 @@ router.post('/login', loginLimiter, async (req, res) => {
 // --- POST /api/auth/logout ---------------------------------------------
 router.post('/logout', async (req, res) => {
     try {
-        const token = req.cookies?.[SESSION_COOKIE];
+        // Read the token the same way attachUser does. Reading only the cookie
+        // meant a session held via Authorization: Bearer survived sign-out and
+        // stayed valid in refresh_tokens for the full session lifetime.
+        const token = readToken(req);
         if (token) await revokeSession(token);
     } catch (err) {
         console.error('[AUTH] logout failed:', err.message);
@@ -163,7 +193,7 @@ router.get('/me', (req, res) => {
 });
 
 // --- POST /api/auth/password -------------------------------------------
-router.post('/password', requireAuth, async (req, res) => {
+router.post('/password', requireAuth, passwordLimiter, async (req, res) => {
     try {
         const { currentPassword, newPassword } = req.body || {};
 

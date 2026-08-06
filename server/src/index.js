@@ -13,8 +13,9 @@ import cookieParser from 'cookie-parser';
 import config from './config.js';
 import { assertConnection, pool } from './db.js';
 import { runMigrations } from './migrate.js';
-import { attachUser } from './auth/middleware.js';
+import { attachUser, requireAuth } from './auth/middleware.js';
 import { purgeExpiredSessions } from './auth/sessions.js';
+import { getSettings } from './lib/settings.js';
 
 import authRoutes from './routes/auth.js';
 import aiRoutes from './routes/ai.js';
@@ -79,7 +80,11 @@ app.get('/api/health', (req, res) => {
         version: '2.0.0',
         db: readiness.db,
         migrations: readiness.migrations,
-        error: readiness.error,
+        // The detail stays in the container log. This endpoint is unauthenticated,
+        // and readiness.error is the verbatim pg/migration message — during an
+        // outage it would hand out things like the internal DB host or
+        // 'password authentication failed for user "..."'.
+        error: readiness.error ? 'unavailable' : null,
         timestamp: new Date().toISOString(),
     });
 });
@@ -99,24 +104,49 @@ function requireReady(req, res, next) {
 // body-parser marks the request as handled, so express.json() below skips it.
 app.use('/api/lemonsqueezy-webhook', express.raw({ type: '*/*', limit: '1mb' }));
 
-// Only the vision endpoint carries base64 images. Granting every route a 25 MB
-// budget would let an anonymous caller tie up memory on the login form.
-app.use('/api/vision', express.json({ limit: '25mb' }));
-app.use(express.json({ limit: '256kb' }));
-
 app.use(cookieParser());
 
 // Session lookup costs a JWT verify plus a database round trip, so it runs for
 // the API only — not for every static asset the browser requests.
 app.use('/api', attachUser);
 
+// Only the vision endpoint carries base64 images. Granting every route a 25 MB
+// budget would let an anonymous caller tie up memory on the login form.
+//
+// This sits *below* attachUser and behind requireAuth on purpose: parsing came
+// first before, so an unauthenticated caller could make the server buffer and
+// JSON.parse 25 MB before ever reaching the 401 — a cheap memory-exhaustion
+// primitive needing no account.
+app.use('/api/vision', requireAuth, express.json({ limit: '25mb' }));
+app.use(express.json({ limit: '256kb' }));
+
+// Maintenance mode, enforced server-side so it holds for direct API callers and
+// not just the UI.
+//
+// Three carve-outs, all load-bearing:
+//   * admins keep full access, or turning maintenance ON would lock the only
+//     people who can turn it OFF out of the console;
+//   * /api/auth stays open so an admin can still sign in to do that;
+//   * /api/health stays open (it is mounted above) so the container's probe
+//     doesn't read maintenance as a crash and restart-loop the service.
+async function maintenanceGate(req, res, next) {
+    try {
+        const { maintenanceMode } = await getSettings();
+        if (!maintenanceMode || req.user?.is_admin) return next();
+        return res.status(503).json({ error: 'The service is temporarily down for maintenance' });
+    } catch {
+        return next();   // never let a settings read failure take the API down
+    }
+}
+
 // --- API ----------------------------------------------------------------
 app.use('/api/auth', requireReady, authRoutes);
-app.use('/api', requireReady, aiRoutes);            // /api/generate, /api/vision
-app.use('/api', requireReady, billingRoutes);       // /api/create-checkout
-app.use('/api/projects', requireReady, projectRoutes);
-app.use('/api/account', requireReady, accountRoutes);
 app.use('/api/admin', requireReady, adminRoutes);
+app.use('/api', requireReady, maintenanceGate);     // everything below is gated
+app.use('/api', aiRoutes);                          // /api/generate, /api/vision
+app.use('/api', billingRoutes);                     // /api/create-checkout
+app.use('/api/projects', projectRoutes);
+app.use('/api/account', accountRoutes);
 
 // An unmatched /api/* must not fall through to index.html, or the client gets
 // HTML where it expected JSON and the error is a mystery.
