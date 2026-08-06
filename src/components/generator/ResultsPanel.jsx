@@ -164,7 +164,7 @@ const ResultsPanel = () => {
 
                 <div className="flex items-center gap-3 text-[10px] text-muted opacity-40">
                     <div className="w-6 h-px bg-border" />
-                    <span>Kemo Engine v9.0</span>
+                    <span>Kemo Prompt v9.0</span>
                     <div className="w-6 h-px bg-border" />
                 </div>
             </div>
@@ -247,7 +247,7 @@ const ResultsPanel = () => {
                             txt += `  ${mt.master_visual_prompt}\n\n`;
                         }
 
-                        txt += `${line}\n  End of Scenario — Kemo Engine\n${line}\n`;
+                        txt += `${line}\n  End of Scenario — Kemo Prompt\n${line}\n`;
 
                         const blob = new Blob([txt], { type: 'text/plain;charset=utf-8' });
                         const url = URL.createObjectURL(blob);

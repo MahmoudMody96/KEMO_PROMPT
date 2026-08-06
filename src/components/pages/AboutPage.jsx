@@ -66,8 +66,8 @@ const AboutPage = () => {
                 </h1>
                 <p className="section-sub rise mx-auto mt-5" style={{ '--i': 2 }}>
                     {isAr
-                        ? 'Kemo Engine بيحوّل فكرة سطر واحد لمخطط إنتاج كامل — سيناريو ومشاهد وشخصيات وبرومبتات صور، بثبات في الشخصية والأسلوب.'
-                        : 'Kemo Engine turns a one-line idea into a full production blueprint — script, scenes, characters and image prompts, with the character and style held steady.'}
+                        ? 'Kemo Prompt بيحوّل فكرة سطر واحد لمخطط إنتاج كامل — سيناريو ومشاهد وشخصيات وبرومبتات صور، بثبات في الشخصية والأسلوب.'
+                        : 'Kemo Prompt turns a one-line idea into a full production blueprint — script, scenes, characters and image prompts, with the character and style held steady.'}
                 </p>
             </section>
 

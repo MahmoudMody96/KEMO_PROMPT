@@ -27,7 +27,7 @@ export const isAdmin = (user) => user?.is_admin === true;
 const translations = {
     en: {
         adminPanel: 'Admin Panel',
-        kemoEngine: 'Kemo Engine',
+        kemoEngine: 'Kemo Prompt',
         overview: 'Overview',
         users: 'Users',
         analytics: 'Analytics',
@@ -103,7 +103,7 @@ const translations = {
     },
     ar: {
         adminPanel: 'لوحة التحكم',
-        kemoEngine: 'Kemo Engine',
+        kemoEngine: 'Kemo Prompt',
         overview: 'نظرة عامة',
         users: 'المستخدمين',
         analytics: 'التحليلات',

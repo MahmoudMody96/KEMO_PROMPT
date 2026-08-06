@@ -9,6 +9,7 @@
 import React from 'react';
 import { useAppContext } from '../../context/AppContext';
 import { Globe, Sun, Moon } from 'lucide-react';
+import Wordmark, { WordmarkMark } from '../ui/Wordmark';
 
 const PublicLayout = ({ children, theme, onToggleTheme }) => {
     const { isRTL, language, toggleLanguage, setActiveTab, activeTab } = useAppContext();
@@ -33,10 +34,8 @@ const PublicLayout = ({ children, theme, onToggleTheme }) => {
                         className="focus-ring flex items-center gap-2.5 rounded-lg"
                         aria-label={isRTL ? 'الصفحة الرئيسية' : 'Home'}
                     >
-                        <img src="/logo.jpg" alt="" aria-hidden="true" className="h-8 w-8 rounded-lg object-cover" />
-                        <span className="text-sm font-bold text-text1">
-                            <span className="brand-text">Kemo</span> Engine
-                        </span>
+                        <WordmarkMark size={32} />
+                        <Wordmark size="sm" />
                     </button>
 
                     <nav className="ms-auto hidden items-center gap-1 md:flex" aria-label={isRTL ? 'روابط' : 'Site'}>
@@ -83,7 +82,7 @@ const PublicLayout = ({ children, theme, onToggleTheme }) => {
 
             <footer className="mt-16 px-4 py-8" style={{ borderBlockStart: '1px solid var(--border-color)' }}>
                 <div className="mx-auto flex w-full max-w-6xl flex-col items-center justify-between gap-3 text-xs text-muted sm:flex-row">
-                    <span>© {new Date().getFullYear()} Kemo Engine</span>
+                    <span>© {new Date().getFullYear()} Kemo Prompt</span>
                     <nav className="flex flex-wrap items-center justify-center gap-4" aria-label={isRTL ? 'روابط الأسفل' : 'Footer'}>
                         {links.map((l) => (
                             <button

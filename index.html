@@ -25,10 +25,20 @@
   <title>Kemo Prompt | Creative AI Engine</title>
 
   <style>
-    /* Critical CSS for faster initial render */
+    /* Critical CSS for faster initial render.
+
+       The background MUST go through --bg-app rather than a fixed colour. This
+       rule is unlayered, and unlayered CSS outranks anything in @layer base —
+       which is where src/index.css defines `body { bg-bg0 }`. A hardcoded value
+       here therefore wins permanently, and light mode was painting near-black
+       (#030712) behind every transparent surface: the sign-in screen sat on a
+       dark page while using light-theme text.
+
+       The literal stays as the fallback only for the instant before the main
+       stylesheet lands, which matches the app's default dark theme. */
     body {
       margin: 0;
-      background: #030712;
+      background: var(--bg-app, #030712);
     }
   </style>
 </head>

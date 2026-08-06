@@ -6,7 +6,10 @@
 > `/api/health`. الرقمين مقصودين ومختلفين.
 
 <p align="center">
-  <img src="./public/logo.jpg" alt="Kemo Engine Logo" width="300"/>
+  <strong style="font-size:2rem">Kemo Prompt</strong>
+  <br/>
+  <em>الهوية البصرية نصية بالكامل — الشعار مبني بالخط (<code>src/components/ui/Wordmark.jsx</code>)
+  مش صورة، فبيتبع الثيم ويفضل حاد على أي دقة شاشة.</em>
 </p>
 
 <p align="center">

@@ -12,6 +12,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useAppContext } from '../../context/AppContext';
 import { Mail, Lock, User, ArrowRight, Loader2, ArrowLeft } from 'lucide-react';
+import Wordmark, { WordmarkMark } from '../ui/Wordmark';
 
 const LoginPage = () => {
     const { signIn, signUp, error: authError } = useAuth();
@@ -64,15 +65,9 @@ const LoginPage = () => {
 
                 <div className="surface-card p-7 md:p-8">
                     <div className="text-center">
-                        <img
-                            src="/logo.jpg"
-                            alt=""
-                            aria-hidden="true"
-                            className="mx-auto h-14 w-14 rounded-2xl object-cover"
-                            style={{ boxShadow: '0 0 0 1px var(--border-color), var(--elevation-2)' }}
-                        />
-                        <h1 className="mt-4 text-2xl font-extrabold tracking-tight text-text1">
-                            <span className="brand-text">Kemo</span> Engine
+                        <WordmarkMark size={56} className="mx-auto" />
+                        <h1 className="mt-4">
+                            <Wordmark size="lg" />
                         </h1>
                         <p className="mt-1.5 text-sm text-muted">
                             {isSignUp

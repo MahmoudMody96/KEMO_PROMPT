@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import HomePage from './components/home/HomePage';
 import CommandPalette from './components/ui/CommandPalette';
+import Wordmark, { WordmarkMark } from './components/ui/Wordmark';
 import { PLANS } from './services/creditsService';
 import { useModal } from './lib/useModal';
 import { lazyWithRetry } from './lib/lazyWithRetry';
@@ -246,17 +247,11 @@ const Sidebar = ({ onNavClick }) => {
     >
       {/* Brand */}
       <div className="flex items-center gap-3 px-4 py-5">
-        <img
-          src="/logo.jpg"
-          alt=""
-          aria-hidden="true"
-          className="h-9 w-9 shrink-0 rounded-xl object-cover"
-          style={{ boxShadow: '0 0 0 1px var(--border-color), var(--elevation-1)' }}
-        />
+        <WordmarkMark size={36} />
         {!collapsed && (
           <div className="min-w-0">
-            <p className="truncate text-sm font-bold leading-tight text-text1">
-              <span className="brand-text">Kemo</span> Engine
+            <p className="truncate leading-tight">
+              <Wordmark size="sm" />
             </p>
             <p className="truncate text-[10px] text-muted">{t('appSubtitle')}</p>
           </div>
@@ -733,7 +728,9 @@ const AuthGate = () => {
     return (
       <div className="flex items-center justify-center min-h-screen bg-bg0">
         <div className="text-center">
-          <img src="/logo.jpg" alt="Kemo Engine" className="w-16 h-16 rounded-2xl mx-auto mb-4 animate-pulse" />
+          <div className="mb-4 animate-pulse">
+            <Wordmark size="lg" withMark />
+          </div>
           <p className="text-text2">Loading...</p>
         </div>
       </div>
