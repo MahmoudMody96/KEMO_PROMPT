@@ -5,29 +5,24 @@ import config from './config.js';
 
 const { Pool } = pg;
 
-// SSL is on by default in production unless the connection string already says
-// otherwise. A managed Postgres reached over anything but a private network
-// would otherwise carry credentials and every stored prompt in plaintext.
-// PGSSL_NO_VERIFY=1 is the escape hatch for providers using self-signed certs.
+// SSL is OPT-IN: enabled only when the connection string asks for it
+// (sslmode=require / verify-*) or PGSSL=1 is set. Whether a database wants TLS
+// is a property of that database, not something to infer from the environment
+// label or the hostname.
 //
-// The loopback exemption matters: NODE_ENV defaults to "production" (config.js),
-// which is the right default for cookie flags and error verbosity but made every
-// local `npm run make-admin` / `npm run migrate` die with "the server does not
-// support SSL connections" before it reached a single query. Encrypting a
-// connection that never leaves the machine buys nothing, so the decision follows
-// the actual destination rather than the environment label.
-const isLoopbackDb = (url) => {
-    try {
-        const host = new URL(url).hostname.toLowerCase().replace(/^\[|\]$/g, '');
-        return host === 'localhost' || host === '127.0.0.1' || host === '::1';
-    } catch {
-        return false;   // unparseable — assume remote and keep SSL on
-    }
-};
-
-const wantsSsl = config.isProduction
-    && !/sslmode=/i.test(config.databaseUrl || '')
-    && !isLoopbackDb(config.databaseUrl || '');
+// This is deliberately default-OFF. An earlier version turned SSL on for any
+// non-loopback DB in production — but the standard Coolify/Docker deployment
+// reaches its Postgres over a PRIVATE internal network on a service hostname,
+// and that Postgres does NOT speak SSL. Forcing it there failed every
+// connection with "the server does not support SSL connections", so the whole
+// app came up with db:"error" and migrations stuck pending.
+//
+// A managed external DB that needs TLS (Neon, Supabase, RDS, …) advertises it
+// with `sslmode=require` in DATABASE_URL — set that and SSL turns on. PGSSL=1
+// is the same switch without touching the URL; PGSSL_NO_VERIFY=1 relaxes cert
+// verification for providers using self-signed certs.
+const wantsSsl = /sslmode=(require|verify-ca|verify-full)/i.test(config.databaseUrl || '')
+    || process.env.PGSSL === '1';
 
 export const pool = new Pool({
     connectionString: config.databaseUrl,
