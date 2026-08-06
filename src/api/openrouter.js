@@ -279,7 +279,13 @@ export async function callOpenRouter(
 ) {
     const finalTemp = temperature !== null ? temperature : (returnRawText ? 0.9 : 0.7);
     const MAX_RETRIES = 2;
-    const TIMEOUT_MS = maxTokens > 15000 ? 120000 : 60000;
+    // Must exceed the server's own 120s upstream timeout (server/src/lib/
+    // openrouter.js) plus its charge/log overhead. The old 60s floor abandoned
+    // slow-but-valid generations: a full screenplay on a slower model takes
+    // ~90s, so the client aborted at 60s while the server ran on to completion
+    // and charged for a result the user never saw. The client must never give
+    // up before the server can either answer or time out itself.
+    const TIMEOUT_MS = 150000;
 
     // Only the request is retried. Parsing happens after the loop, because a
     // 200 has already been charged server-side: retrying a response we cannot

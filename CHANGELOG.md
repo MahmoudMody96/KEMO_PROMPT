@@ -4,6 +4,50 @@ All notable changes to Kemo Prompt Engine will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+> **Versioning note:** entries below the `[app]` heading track the **application**
+> (auth, credits, admin, deploy — `package.json` `2.x`). The `[10.0.0]`-style
+> entries track the **prompt engine** (generation quality). The two version
+> lines are intentionally separate.
+
+---
+
+## [app] - 2026-08-06
+
+### Added
+- **Runtime settings** — `app_settings` table (migration `004`) + a cached
+  settings module. Admin can set default signup credits, the rate limit,
+  **maintenance mode**, and signup on/off — all enforced server-side, not just
+  hidden in the UI (register 403s when signup is off; a maintenance gate 503s
+  non-admins while exempting admins, `/api/auth` and `/api/health`).
+- **Admin console** rebuilt on the shared design identity, with a real Settings
+  form and a **System Status** panel that probes the LLM provider and reports
+  the true key status instead of hardcoding "online".
+- **Character consistency by construction** (`consistencyLock.js`): every
+  `scene_prompt` is rewritten to carry a CREF built from the character's own
+  sheet, so consistency is a property of the output, not a prompt instruction.
+- **Template browser** in Prompt Architect is now reachable and collects a
+  template's variables before inserting (no more raw `{{MARKERS}}`).
+- **Separate vision model** (`OPENROUTER_VISION_MODEL`) so a text-only text
+  model (e.g. deepseek) can't silently break the image extractor.
+- `make-admin` script to appoint the first admin from the host, never over HTTP.
+- CI workflow (`npm ci` + lint + tests + build + server syntax check) and a
+  `tests/` suite (engines, routes, template fill, consistency) — 39 tests.
+
+### Fixed
+- **WCAG-AA contrast**: 0 failures across 11 routes × 2 themes. Introduced a
+  theme-aware token system (separate CTA gradient for white text, categorical
+  `--chart-*`, semantic status tokens, `.on-brand` / `.on-dark` helpers).
+- **Generation client timeout** raised 60s → 150s: it must exceed the server's
+  120s upstream timeout, or the client abandons (and the user still pays for) a
+  slow-but-valid generation. The full screenplay can take 70–90s.
+- Generate/vision now log the **resolved** model, not the empty request field.
+- `db.js` skips SSL for a loopback `DATABASE_URL` so `make-admin`/`migrate` run
+  locally under the production-default `NODE_ENV`.
+- `fillTemplate`: quote-aware conditional split, and `$`-safe substitution.
+- Default model moved off `google/gemini-2.0-flash-001` (no longer routable on
+  OpenRouter) to `google/gemini-2.5-flash-lite`.
+- Root `package-lock.json` synced with the `2.0.0` version bump so `npm ci` runs.
+
 ---
 
 ## [10.0.0] - 2026-02-10
