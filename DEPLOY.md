@@ -62,9 +62,14 @@ postgres://kemo:PASSWORD@<db-uuid>:5432/kemo
 | `DATABASE_URL` | الرابط الداخلي من الخطوة 1 |
 | `JWT_SECRET` | **32 حرف على الأقل** — الكود بيتحقق ويقف لو أقصر |
 | `OPENROUTER_API_KEY` | من openrouter.ai/keys |
-| `APP_URL` | رابط التطبيق، مثال `https://kemo.example.com` |
-| `NODE_ENV` | `production` |
-| `PORT` | `3000` |
+
+### مهمة بس ليها قيمة افتراضية
+
+| المتغير | الافتراضي | ليه تظبطها |
+|---|---|---|
+| `APP_URL` | — | **لازم للشراء.** من غيرها `/api/create-checkout` بيرجع 500، لأن رابط الرجوع بعد الدفع مابيتاخدش من ترويسة الطلب أبداً |
+| `NODE_ENV` | `production` | سيبها زي ما هي |
+| `PORT` | `3000` | الـ healthcheck بيقراها، فأي قيمة تانية شغالة |
 
 ولّد الـ JWT secret بـ:
 ```bash
@@ -87,6 +92,14 @@ node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
 
 وللواجهة (عامة، بتتحقن وقت البناء):
 `VITE_LEMON_VARIANT_BASIC` · `VITE_LEMON_VARIANT_PRO` · `VITE_LEMON_VARIANT_PREMIUM`
+
+> 🚨 **التلاتة دول لازم يتحطوا كـ Build Variables في Coolify — مش Runtime.**
+> Vite بيحقن `import.meta.env.VITE_*` جوّه الـ bundle **وقت البناء**، فلو
+> حطيتهم كمتغيرات تشغيل عادية مش هيوصلوا للصورة خالص، والنتيجة إن كل باقة في
+> صفحة الأسعار هتقول "هذه الباقة غير مُعدّة حالياً" ومحدش هيقدر يشتري.
+>
+> الـ `Dockerfile` بيستقبلهم عن طريق `ARG` في مرحلة البناء. لو الـ build عندك
+> بيعدّي `--build-arg` بنفسه، اتأكد إن الأسامي مطابقة بالظبط.
 
 ---
 
@@ -218,4 +231,6 @@ git push
 ```
 
 Coolify بيعمل إعادة بناء ونشر. الـ migrations الجديدة بتتطبّق عند الإقلاع،
-والإيقاف نظيف (`dumb-init` بيمرّر SIGTERM) فالطلبات الجارية بتخلص الأول.
+والإيقاف نظيف: `node` هو PID 1 (الـ `CMD` بصيغة exec) وفيه معالج `SIGTERM`
+في `server/src/index.js` بيقفل السيرفر بالراحة وبيدي الطلبات الجارية 10 ثواني
+تخلص قبل الخروج. مفيش `dumb-init` — التطبيق مابيشغّلش عمليات فرعية أصلاً.

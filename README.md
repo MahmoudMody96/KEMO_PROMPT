@@ -1,8 +1,12 @@
 # 🎬 Kemo Prompt Engine v10.0
 **محرك توليد سيناريوهات الفيديو الذكي المدعوم بالذكاء الاصطناعي**
 
+> **ملحوظة عن الأرقام:** `v10.0` هنا هو إصدار **محرك البرومبت** (جودة التوليد).
+> إصدار **التطبيق** نفسه `2.0.0` — وده اللي بيظهر في `package.json` وفي
+> `/api/health`. الرقمين مقصودين ومختلفين.
+
 <p align="center">
-  <img src="./public/kemo-logo.png" alt="Kemo Engine Logo" width="300"/>
+  <img src="./public/logo.jpg" alt="Kemo Engine Logo" width="300"/>
 </p>
 
 <p align="center">
@@ -93,7 +97,7 @@
 ## 🛠️ التثبيت والتشغيل (Installation)
 
 ### المتطلبات
-- Node.js 20+
+- Node.js 20+ (الصورة بتستخدم 22 — شوف .nvmrc)
 - PostgreSQL 14+ (أو Docker)
 - مفتاح [OpenRouter](https://openrouter.ai/keys)
 
@@ -111,7 +115,12 @@ npm install && (cd server && npm install)
 ```
 
 #### 3. الإعدادات
-انسخ `.env.example` إلى `.env` واملأ `DATABASE_URL` و`JWT_SECRET` و`OPENROUTER_API_KEY`.
+انسخ `.env.example` إلى **`server/.env`** واملأ `DATABASE_URL` و`JWT_SECRET` و`OPENROUTER_API_KEY`.
+
+> ⚠️ لازم يكون في `server/.env` مش في جذر المشروع. `dotenv` بيقرأ من مجلد
+> التشغيل (`process.cwd()`)، والسيرفر بيتشغّل من داخل `server/` — فملف `.env`
+> في الجذر مش هيتقرأ خالص والسيرفر هيقفل فوراً بسبب `JWT_SECRET` الناقص.
+> (متغيرات `VITE_*` وحدها هي اللي بتتقرأ من الجذر وقت البناء.)
 
 > ⚠️ مفتاح OpenRouter **لا يصل للمتصفح إطلاقاً**. السيرفر هو الوحيد اللي بيستخدمه،
 > وبيتحقق من هوية المستخدم ويخصم رصيده قبل أي استدعاء.
@@ -123,8 +132,9 @@ npm run build && (cd server && npm start)
 السيرفر بيقدّم الواجهة والـ API على `http://localhost:3000` — ومشغّل الـ
 migrations بيجهّز قاعدة البيانات لوحده عند الإقلاع.
 
-للتطوير على الواجهة بإعادة تحميل فورية، شغّل `npm run dev` في نافذة تانية
-(بيشتغل على `:5173` ويحتاج proxy للـ API).
+للتطوير على الواجهة بإعادة تحميل فورية، شغّل `npm run dev` في نافذة تانية.
+بيشتغل على `:5173` وبيوجّه كل طلبات `/api` تلقائياً للسيرفر على `:3000`
+(الـ proxy متظبّط في `vite.config.js`) — فلازم السيرفر يكون شغال كمان.
 
 #### 5. أول أدمن
 بعد ما تسجّل حساب، من قاعدة البيانات:
@@ -150,7 +160,7 @@ KEMO_PROMPT/
 │   ├── api/
 │   │   ├── openrouter.js          # نداءات /api/generate و /api/vision
 │   │   ├── promptApi.js           # واجهة موحّدة للمحركات
-│   │   └── engines/               # 13 محرك: DNA, screenplay, nexus, trends
+│   │   └── engines/               # 12 محرك: DNA, screenplay, nexus, trends
 │   ├── lib/
 │   │   ├── apiClient.js           # الباب الوحيد للباك إند
 │   │   └── events.js              # إشارة تحديث الرصيد
@@ -190,8 +200,12 @@ KEMO_PROMPT/
                                        فشل؟ ──> refundCredits + خطأ
 ```
 
-المستخدم مابيتحاسبش على استدعاء فشل، والعميل بيبعت **اسم الإجراء** بس —
-مش سعره.
+المستخدم مابيتحاسبش على استدعاء فشل، والعميل بيبعت **اسم الإجراء** بس — مش سعره.
+
+والسيرفر بيربط الإجراء بميزانية التوكنز اللي بيشتريها (`ACTION_LIMITS` في
+`routes/ai.js`)، فحد يدّعي إجراء أرخص بياخد سقف الإجراء الأرخص كمان — مش
+سيناريو كامل بسعر عصف ذهني. والموديل نفسه من قايمة سماح على السيرفر، عشان
+العميل ميقدرش يختار موديل أغلى بنفس السعر.
 
 ---
 
@@ -453,19 +467,19 @@ Genre DNA Used:
 ## 🎨 لقطات الشاشة (Screenshots)
 
 <p align="center">
-  <img src="./docs/screenshots/generator.png" alt="Generator Interface" width="80%"/>
+  <em>(لقطات الشاشة غير مضمّنة في المستودع)</em>
   <br/>
   <em>واجهة المولد الرئيسية - Generator v10.0</em>
 </p>
 
 <p align="center">
-  <img src="./docs/screenshots/idea-suggestion.png" alt="Idea Suggestion" width="80%"/>
+  <em>(لقطات الشاشة غير مضمّنة في المستودع)</em>
   <br/>
   <em>اقتراح الأفكار بنظام v10.0 - Multi-Stage + Morals</em>
 </p>
 
 <p align="center">
-  <img src="./docs/screenshots/trend-hunter.png" alt="Trend Hunter" width="80%"/>
+  <em>(لقطات الشاشة غير مضمّنة في المستودع)</em>
   <br/>
   <em>باحث الترندات الفيروسية</em>
 </p>
@@ -544,10 +558,9 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND...
 
 ## 📚 Additional Resources
 
-- [Full Documentation](./docs/DOCUMENTATION.md)
-- [API Reference](./docs/API.md)
 - [Changelog](./CHANGELOG.md)
-- [Contributing Guide](./CONTRIBUTING.md)
+- [Deployment Guide](./DEPLOY.md)
+- [License](./LICENSE)
 
 ---
 
