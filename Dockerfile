@@ -17,6 +17,15 @@ WORKDIR /build
 # the build stage is thrown away, and none of it reaches the final image.
 ENV NODE_ENV=development
 
+# The build server's network drops connections mid-install (ECONNRESET on the
+# large frontend dependency download). npm gives up after 2 quick retries by
+# default, failing the whole deploy over a transient blip. Widen the retry
+# budget and timeouts so a reset is retried with backoff instead of fatal.
+ENV npm_config_fetch_retries=5 \
+    npm_config_fetch_retry_mintimeout=20000 \
+    npm_config_fetch_retry_maxtimeout=120000 \
+    npm_config_fetch_timeout=600000
+
 COPY package.json package-lock.json* ./
 RUN npm ci --include=dev
 
@@ -44,6 +53,12 @@ FROM node:22-alpine AS runtime
 
 WORKDIR /app
 ENV NODE_ENV=production
+
+# Same network-resilience as the frontend stage (see note above).
+ENV npm_config_fetch_retries=5 \
+    npm_config_fetch_retry_mintimeout=20000 \
+    npm_config_fetch_retry_maxtimeout=120000 \
+    npm_config_fetch_timeout=600000
 
 # No init wrapper: the app spawns no child processes, so there are no zombies
 # to reap, and index.js installs its own SIGTERM handler for clean shutdown.
