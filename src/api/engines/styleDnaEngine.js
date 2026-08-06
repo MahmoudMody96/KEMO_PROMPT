@@ -9,11 +9,118 @@ export const getStyleDNA = (style) => {
     const s = (style || '').toLowerCase();
 
     // ─────────────────────────────────────────
+    // 📸 PHOTOGRAPHY STYLES
+    // ─────────────────────────────────────────
+    // The whole "Realistic & Photography" group in the style dropdown used to
+    // fall through to the generic default, so picking any of these six produced
+    // byte-identical output — the user changed the style and nothing changed.
+
+    if (s.includes('street photography')) {
+        return {
+            name: "Street Photography | تصوير الشارع",
+            desc: "لحظات يومية حقيقية غير مرتبة — الحياة زي ما هي",
+            colorPalette: "Natural unfiltered tones, muted urban greys and browns, occasional saturated accent from signage or clothing. Film-like colour grading.",
+            lighting: "Available light only. Harsh midday sun with hard shadows, or soft overcast diffusion. Backlit silhouettes at golden hour. No artificial fill.",
+            camera: "35mm or 50mm prime, eye level, candid framing. Deep-ish focus (f/5.6–f/8). Slight motion blur on passers-by. Handheld imperfection is desirable.",
+            renderKeywords: "street photography, candid, 35mm, available light, documentary, Henri Cartier-Bresson, decisive moment, film grain",
+            negativePrompt: "studio lighting, posed, staged, 3D render, cartoon, over-processed HDR, artificial bokeh",
+            environments: ["Crowded market street at midday", "Rain-slicked pavement reflecting neon signage", "Metro platform as a train pulls in", "Café terrace with pedestrians passing"],
+            mood: "الصدق والعفوية — لحظة اتقبضت مش اتصنعت. Authentic, unposed, alive.",
+            texture: "Fine film grain, natural skin texture with pores, fabric weave visible, real-world imperfection retained.",
+            inspiredBy: "Henri Cartier-Bresson, Vivian Maier, Daido Moriyama, Alex Webb"
+        };
+    }
+
+    if (s.includes('portrait') || s.includes('fashion')) {
+        return {
+            name: "Portrait / Fashion | بورتريه وأزياء",
+            desc: "وجوه وتفاصيل بإضاءة احترافية — جودة استوديو",
+            colorPalette: "Controlled, editorial. Clean neutral backdrops, rich skin tones with accurate colour science, one deliberate accent colour from wardrobe.",
+            lighting: "Studio strobes: large softbox key at 45°, reflector fill, hair/rim light for separation. Beauty dish for close beauty work. Precise, sculpted falloff.",
+            camera: "85mm or 105mm portrait lens, chest-up to full length. Shallow DoF (f/1.8–f/2.8) with eyes tack-sharp. Slight compression flattering the face.",
+            renderKeywords: "editorial portrait, studio lighting, 85mm, shallow depth of field, high-end retouching, Vogue quality, softbox, rim light",
+            negativePrompt: "harsh direct flash, cluttered background, motion blur, low resolution, plastic over-smoothed skin, cartoon",
+            environments: ["Seamless paper backdrop in a studio", "Minimal concrete wall with directional window light", "Editorial location set with controlled strobes", "Dark background with single dramatic key light"],
+            mood: "الأناقة والحضور — الشخص هو البطل المطلق للكادر. Poised, deliberate, commanding.",
+            texture: "Natural skin texture retained (pores, fine lines), fabric weave and sheen clearly rendered, individual hair strands separated.",
+            inspiredBy: "Annie Leibovitz, Peter Lindbergh, Mario Testino, Paolo Roversi"
+        };
+    }
+
+    if (s.includes('product photography')) {
+        return {
+            name: "Product Photography | تصوير المنتجات",
+            desc: "منتج نضيف على خلفية بسيطة بإضاءة استوديو — جاهز للإعلان",
+            colorPalette: "Clean and neutral. Pure white, soft grey or a single brand colour backdrop. The product carries all the saturation.",
+            lighting: "Large diffused softboxes both sides, gradient backdrop light, controlled specular highlights. Reflector cards to lift shadows. No unwanted reflections.",
+            camera: "Macro or 100mm, straight-on hero angle or 45° three-quarter. Focus-stacked so the whole product is sharp (f/11–f/16). Locked-off tripod.",
+            renderKeywords: "product photography, studio softbox, white seamless background, focus stacking, commercial, e-commerce, crisp reflections, 8K",
+            negativePrompt: "cluttered background, harsh shadows, fingerprints, dust, motion blur, distorted proportions, cartoon",
+            environments: ["Pure white seamless sweep", "Reflective acrylic surface with soft gradient", "Minimal stone or wood podium", "Coloured gradient backdrop matching the brand"],
+            mood: "الوضوح والرغبة — المنتج مثالي وبيطلب انك تشتريه. Clean, desirable, precise.",
+            texture: "Material honesty: brushed metal grain, matte plastic, glass refraction and caustics, fabric weave. Every surface reads correctly.",
+            inspiredBy: "Apple product launches, Aesop, commercial catalogue photography"
+        };
+    }
+
+    if (s.includes('nature') || s.includes('landscape')) {
+        return {
+            name: "Nature / Landscape | طبيعة ومناظر",
+            desc: "جبال وغروب وبحار — اتساع ومهابة الطبيعة",
+            colorPalette: "Rich natural saturation. Golden-hour warmth against cool blue shadows, deep greens, dramatic sky gradients. Earth tones grounded and true.",
+            lighting: "Golden hour and blue hour. Long raking light across terrain, god rays through cloud breaks, backlit mist. Natural only — never artificial.",
+            camera: "Wide angle 16–24mm for grandeur, or telephoto 200mm+ for compressed layered ridgelines. Deep focus (f/11–f/16). Tripod, often long exposure on water.",
+            renderKeywords: "landscape photography, golden hour, wide angle, deep focus, dramatic sky, National Geographic, long exposure, 8K, atmospheric haze",
+            negativePrompt: "people, buildings, cars, studio lighting, cartoon, flat lighting, oversaturated HDR halos",
+            environments: ["Mountain range at sunrise above a sea of cloud", "Coastline with long-exposure silk water", "Autumn forest with low mist between trunks", "Desert dunes with raking side light"],
+            mood: "المهابة والسكون — الطبيعة أكبر منك بكتير. Awe, scale, stillness.",
+            texture: "Rock striation, individual foliage detail, water motion smoothed or frozen, atmospheric depth haze on distant layers.",
+            inspiredBy: "Ansel Adams, Marc Adamus, Max Rive, National Geographic"
+        };
+    }
+
+    if (s.includes('food photography')) {
+        return {
+            name: "Food Photography | تصوير الطعام",
+            desc: "ألوان بتفتح النفس ولقطات قريبة — الأكل يبان شهي",
+            colorPalette: "Warm appetising saturation. Rich reds, golden browns, fresh herb greens. Warm highlights on sauces and glazes. Complementary props kept muted.",
+            lighting: "Single large soft window light from the side or back, never front. Backlight to make sauces glisten and steam visible. Negative fill for depth.",
+            camera: "Macro or 50mm. Overhead flat-lay, or 45° hero angle, or straight-on for layered items. Shallow DoF (f/2.8–f/4) with the hero bite sharp.",
+            renderKeywords: "food photography, backlit, steam, macro detail, appetising, shallow depth of field, garnish, food styling, editorial",
+            negativePrompt: "flat frontal flash, cold blue tones, wilted or dry-looking food, cluttered background, plastic-looking, cartoon",
+            environments: ["Rustic wooden table with linen napkin", "Dark moody slate surface with backlight", "Bright marble counter with morning window light", "Overhead flat-lay with scattered ingredients"],
+            mood: "الشهية والدفء — نفسك تمد إيدك وتاكل. Warm, fresh, irresistible.",
+            texture: "Glistening sauce, crumb structure, condensation on cold glass, char marks, visible steam, herb freshness.",
+            inspiredBy: "Bon Appétit, Donna Hay, Chef's Table cinematography"
+        };
+    }
+
+    if (s.includes('documentary')) {
+        return {
+            name: "Documentary Realism | واقعية وثائقية",
+            desc: "توثيق حقيقي بدون تجميل — الواقع زي ما هو",
+            colorPalette: "Honest and unglamorised. Natural desaturated tones, real-world colour casts left uncorrected, subdued grading. No stylised look.",
+            lighting: "Whatever is actually there — fluorescent interiors with green cast, harsh sun, single practical lamp. Available light is the rule.",
+            camera: "35mm handheld, observational distance. Natural eye-level framing. Moderate DoF so context stays readable. Follows action rather than composing it.",
+            renderKeywords: "documentary photography, photojournalism, available light, handheld, observational, reportage, unstaged, natural grain",
+            negativePrompt: "studio lighting, posed subjects, heavy colour grading, glamour retouching, 3D render, cartoon, staged composition",
+            environments: ["Working interior lit by overhead fluorescents", "Field location in unmodified daylight", "Crowded public space at street level", "Domestic room lit by a single window"],
+            mood: "الصدق والحياد — الكاميرا بتشهد مش بتتدخل. Honest, immediate, unembellished.",
+            texture: "Real surfaces with wear and dirt, natural skin without retouching, practical grain, imperfection preserved.",
+            inspiredBy: "Sebastião Salgado, James Nachtwey, Magnum Photos, Frontline"
+        };
+    }
+
+    // ─────────────────────────────────────────
     // 🏰 3D & ANIMATION STYLES
     // ─────────────────────────────────────────
 
     // 1. Disney Pixar 3D | ديزني بيكسار
-    if (s.includes('pixar') || s.includes('disney')) {
+    //
+    // The UI label for the 3D-Cute option is "3D Cute Character (Pixar Style)",
+    // which contains "pixar" — so without this exclusion it was captured here and
+    // the dedicated branch below became unreachable.
+    if ((s.includes('pixar') || s.includes('disney')) && !(s.includes('cute') && s.includes('3d'))) {
         return {
             name: "Disney Pixar 3D | ديزني بيكسار 3D",
             desc: "عالم 3D ملون ودافي بجودة أفلام بيكسار — شخصيات معبّرة وإضاءة سينمائية",
@@ -153,7 +260,12 @@ export const getStyleDNA = (style) => {
     }
 
     // 9. Film Noir | فيلم نوار
-    if (s.includes('noir')) {
+    //
+    // "Cyberpunk / Neon Noir" also contains "noir". Matching it here injected a
+    // black-and-white 1940s palette (and a negativePrompt banning colour) into
+    // what should be a neon-drenched prompt, and made the cyberpunk branch below
+    // unreachable from the UI.
+    if (s.includes('noir') && !s.includes('neon noir') && !s.includes('cyberpunk')) {
         return {
             name: "Film Noir | فيلم نوار",
             desc: "أبيض وأسود بظلال ثقيلة وغموض — أجواء أفلام التحقيقات الكلاسيكية",

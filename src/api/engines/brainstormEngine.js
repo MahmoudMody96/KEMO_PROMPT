@@ -1,5 +1,4 @@
 ﻿// BRAINSTORM ENGINE - brainstorm_concept + generateIdeaPrompt + helpers
-import { TEXT_MODEL } from '../config.js';
 import { callOpenRouter } from '../openrouter.js';
 import { getPersona } from './personaEngine.js';
 import { getStyleDNA } from './styleDnaEngine.js';
@@ -185,7 +184,7 @@ export async function brainstorm_concept(inputs) {
             : `ولّد 3 أفكار فيديو عن: ${inputs.genre || 'Creative'} | ${inputs.videoStyle || 'Cinematic'} | بطل: ${primaryChar}${secondaryCharsText}. JSON فقط.`;
 
         // v13.0: 1800 tokens for 3 rich ideas (title + hook + lesson), 0.82 temp for higher creative diversity
-        const result = await callOpenRouter(userMessage, TEXT_MODEL, false, 1800, 0.82, ideaSystemPrompt, 'brainstorm');
+        const result = await callOpenRouter(userMessage, null, false, 1800, 0.82, ideaSystemPrompt, 'brainstorm');
         return result;
     } catch (error) {
         console.error('[ERROR] brainstorm_concept failed:', error);
@@ -349,12 +348,30 @@ export const generateIdeaPrompt = (currentSettings) => {
         : '';
 
     // === TRANSPARENT CREATURE SUBTYPE VARIATION ===
-    const isTransparentChar = characterType.toLowerCase().includes('transparent');
-    const transparentSubtypeVariation = isTransparentChar && charDNA.subTypes
+    const isTransparentChar = (characterType || '').toLowerCase().includes('transparent');
+    const transparentSubtypeVariation = isTransparentChar && charDNA.subTypes?.length
         ? (() => {
-            // Pick 3 random subtypes for the 3 ideas
-            const shuffledSubs = [...charDNA.subTypes].sort(() => Math.random() - 0.5).slice(0, 3);
-            return `\n🫧 تنوع الكائنات الشفافة (إلزامي — كل فكرة لازم كائن مختلف):\n• فكرة ١ → **${shuffledSubs[0].type}**: ${shuffledSubs[0].personality}\n• فكرة ٢ → **${shuffledSubs[1].type}**: ${shuffledSubs[1].personality}\n• فكرة ٣ → **${shuffledSubs[2].type}**: ${shuffledSubs[2].personality}\n⚠️ ممنوع نفس نوع الكائن الشفاف في أكتر من فكرة!`;
+            // Every branch names its subType discriminator differently (type,
+            // food, animal, object, organ, robot...), so read whichever one this
+            // branch used rather than assuming `.type` — which was undefined on
+            // 14 of 15 branches and rendered as the literal string "undefined".
+            const labelOf = (sub) => sub.type ?? sub.label ?? Object.values(sub)[0];
+
+            // Fisher-Yates. `sort(() => Math.random() - 0.5)` is not a uniform
+            // shuffle — under V8's TimSort it strongly favours the original
+            // order, so "random variety" was barely varying.
+            const subs = [...charDNA.subTypes];
+            for (let i = subs.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [subs[i], subs[j]] = [subs[j], subs[i]];
+            }
+
+            // Wrap rather than slice: a branch with fewer than 3 subtypes used to
+            // throw on shuffledSubs[2].type.
+            const pick = (n) => subs[n % subs.length];
+            const line = (idx, n) => `• فكرة ${idx} → **${labelOf(pick(n))}**: ${pick(n).personality}`;
+
+            return `\n🫧 تنوع الكائنات الشفافة (إلزامي — كل فكرة لازم كائن مختلف):\n${line('١', 0)}\n${line('٢', 1)}\n${line('٣', 2)}\n⚠️ ممنوع نفس نوع الكائن الشفاف في أكتر من فكرة!`;
         })()
         : '';
     const dialectDNA = getDialectDNA(videoLanguage);

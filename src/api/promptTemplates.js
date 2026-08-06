@@ -1251,19 +1251,67 @@ export function getTemplateCounts() {
     return counts;
 }
 
+// Splits "a : b" on the separator that sits OUTSIDE quotes. A plain
+// /(.+?)\s*:\s*(.+?)/ split on the first colon it saw, so
+//   {{FOCUS_AREA ? '6. **Special Focus:** ' + FOCUS_AREA : ''}}
+// broke on the colon inside the string literal and emitted "'6. **Special Focus".
+function splitOutsideQuotes(source, separator) {
+    let quote = null;
+    for (let i = 0; i < source.length; i += 1) {
+        const ch = source[i];
+        if (quote) {
+            if (ch === quote && source[i - 1] !== '\\') quote = null;
+        } else if (ch === "'" || ch === '"') {
+            quote = ch;
+        } else if (ch === separator) {
+            return [source.slice(0, i), source.slice(i + 1)];
+        }
+    }
+    return null;
+}
+
+// Evaluates the tiny expression language the templates use: quoted literals
+// and bare variable names joined by "+". Anything unrecognised is dropped
+// rather than leaked, so a malformed branch can't emit its own source.
+function evalBranch(expr, variables) {
+    const parts = [];
+    let rest = expr.trim();
+    while (rest.length) {
+        const split = splitOutsideQuotes(rest, '+');
+        const token = (split ? split[0] : rest).trim();
+        rest = split ? split[1] : '';
+        if (!token) continue;
+        const quoted = token.match(/^(['"])([\s\S]*)\1$/);
+        if (quoted) parts.push(quoted[2]);
+        else if (Object.prototype.hasOwnProperty.call(variables, token)) parts.push(variables[token] ?? '');
+    }
+    return parts.join('');
+}
+
 /**
- * Fill template variables with values
+ * Fill template variables with values.
+ * Blank variables become a [NAME] marker so the gap stays visible and editable.
  */
 export function fillTemplate(templateText, variables) {
     let filled = templateText;
-    for (const [key, value] of Object.entries(variables)) {
-        const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
-        filled = filled.replace(regex, value || `[${key}]`);
-    }
-    // Handle conditional variables like {{VAR ? 'text' + VAR : ''}}
-    filled = filled.replace(/\{\{(\w+)\s*\?\s*(.+?)\s*:\s*(.+?)\}\}/g, (match, varName, truthy, falsy) => {
-        return variables[varName] ? truthy.replace(varName, variables[varName]) : falsy;
+
+    // Conditionals FIRST: a plain {{VAR}} pass would otherwise rewrite the
+    // variable name inside a conditional's branches before it is parsed.
+    filled = filled.replace(/\{\{\s*(\w+)\s*\?([\s\S]*?)\}\}/g, (match, varName, body) => {
+        const branches = splitOutsideQuotes(body, ':');
+        if (!branches) return match;
+        const [truthy, falsy] = branches;
+        return evalBranch(variables[varName] ? truthy : falsy, variables);
     });
+
+    for (const [key, value] of Object.entries(variables)) {
+        const regex = new RegExp(`\\{\\{\\s*${key}\\s*\\}\\}`, 'g');
+        // Function form, not a string: a replacement string treats $&, $1 and
+        // $` as backreferences, so pasting code containing them corrupted the
+        // output. A function's return value is inserted verbatim.
+        filled = filled.replace(regex, () => (value ? String(value) : `[${key}]`));
+    }
+
     return filled;
 }
 

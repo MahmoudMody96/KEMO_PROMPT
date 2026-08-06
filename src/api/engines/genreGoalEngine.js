@@ -8,6 +8,74 @@
 export const getGenreGoal = (genre) => {
     const g = (genre || '').toLowerCase();
 
+    // ═══════════════════════════════════════════════════════════════
+    // SPECIFIC GENRES FIRST — and kept in step with personaEngine.
+    //
+    // Both engines are injected into the SAME system prompt, so when they
+    // disagree the model receives two contradictory briefs at once. Measured
+    // before this: Action/Thriller got a horror goal, Mystery got a horror
+    // goal, Sports got an action goal against a motivational persona, and
+    // Story Time / Religious / Finance / News fell through to the generic
+    // "creative video" goal while their personas were highly specific.
+    //
+    // Anything added here must have a matching branch in personaEngine.js.
+    // ═══════════════════════════════════════════════════════════════
+
+    // Action — must precede the horror branch, which also claims 'thriller'.
+    if (g.includes('action') || g.includes('thriller'))
+        return `💥 هذا فيديو أكشن/إثارة — الهدف = ضغط متصاعد وحركة مقروءة.
+• كل مشهد لازم يكون واضح مكانياً — المشاهد يعرف مين فين وعايز إيه.
+• حدد الخطر والثمن قبل ما تطلق الحركة — مشهد بلا مخاطرة = استعراض فاضي.
+• كل تصعيد ياخد من البطل حاجة (وقت، حليف، خيار).
+• ممنوع: بطل لا يُقهر، كاميرا مهزوزة تخفي الفوضى، جغرافيا بتتغير بين اللقطات.`;
+
+    // Mystery — must precede horror, which also claims 'mystery' and 'crime'.
+    if (g.includes('mystery') || g.includes('true crime') || g.includes('detective'))
+        return `🔍 هذا فيديو غموض/تحقيق — الهدف = المشاهد يحل اللغز معاك، مش تتفرج عليه.
+• كل دليل لازم يظهر للمشاهد قبل الكشف — اللعب النظيف شرط.
+• التوتر من الدلالة مش من الدم أو الصدمة.
+• استبعد نظرية بديلة واحدة على الأقل بشكل صريح.
+• في القضايا الحقيقية: الضحية إنسان — لا تحوّله لمادة تشويق، وقل الغير معروف بوضوح.`;
+
+    // Sports — must precede the action branch, which claims 'sport'.
+    if (g.includes('sport') || g.includes('fitness') || g.includes('gym'))
+        return `🏆 هذا فيديو رياضي/لياقة — الهدف = تحفيز مبني على مجهود حقيقي.
+• اربط كل إنجاز بالثمن اللي اتدفع عشانه — التكرار، الألم، الانضباط.
+• أرقام وتفاصيل ملموسة بدل شعارات عامة.
+• ممنوع: وعود سريعة، مقارنات بتحقّر المبتدئ، معلومة تدريبية خطرة.`;
+
+    // Story Time
+    if (g.includes('story time') || g.includes('storytime'))
+        return `🔥 هذا فيديو حكاية — الهدف = تمسك المشاهد بالصوت والسرد وحده.
+• ابدأ من نص الحدث، مش من المقدمة — الجملة الأولى تفتح سؤال.
+• اوعد بالمفاجأة بدري، وسلّمها متأخر، وماتنساهاش.
+• سيب تفصيلة واحدة للنهاية عشان تعيد تأطير البداية.
+• ممنوع: تمهيد طويل، شرح النكتة أو العبرة، نهاية أصغر من البناء.`;
+
+    // Religious — a generic "creative" goal is actively wrong here.
+    if (g.includes('islamic') || g.includes('religious') || g.includes('إسلامي') || g.includes('ديني'))
+        return `🕌 هذا فيديو ديني — الهدف = إيصال معنى بدقة ووقار.
+• الدقة واجب: لا تقتبس آية أو حديث إلا موثقاً — ولو مش متأكد، احذفه.
+• الصورة توحي ولا تجسّد — نور، خط عربي، عمارة، طبيعة. ممنوع تجسيد الأنبياء.
+• الخطاب دعوة لا إدانة — تواضع في النبرة.
+• ممنوع: نسبة مغلوطة، طائفية، ترهيب، موسيقى درامية فوق التلاوة.`;
+
+    // Finance
+    if (g.includes('finance') || g.includes('business') || g.includes('invest') || g.includes('money'))
+        return `💼 هذا فيديو مالي/أعمال — الهدف = كشف الآلية ورا الرقم.
+• تتبع الفلوس: مين بيدفع لمين، وليه.
+• كل رقم يجيله سياق ومقارنة وإطار زمني.
+• اذكر الحافز الحقيقي لكل طرف في القصة.
+• ممنوع: وعود ثراء سريع، انتقاء فترات زمنية مريحة، نصيحة استثمارية مباشرة.`;
+
+    // News
+    if (g.includes('news') || g.includes('analysis'))
+        return `📰 هذا فيديو أخبار/تحليل — الهدف = وضوح وحياد مع سياق كافٍ.
+• افصل الخبر المؤكد عن التحليل بوضوح.
+• اذكر المصدر والتاريخ لكل ادعاء أساسي.
+• اعرض أقوى حجة للطرف المقابل بأمانة.
+• ممنوع: عناوين مبالغ فيها، تقديم الرأي كحقيقة، حذف السياق.`;
+
     if (g.includes('cook') || g.includes('food') || g.includes('recipe') || g.includes('طبخ'))
         return `🍳 هذا فيديو طبخ — الهدف الأول والأخير = تعليم وصفة حقيقية خطوة بخطوة.
 • كل مشهد = خطوة عملية من الوصفة (تحضير → تتبيل → طبخ → تقديم → تذوق).

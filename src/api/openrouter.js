@@ -4,7 +4,7 @@
 // The server holds the OpenRouter key, checks the session, and charges credits;
 // the browser never sees a provider key and cannot pick its own price.
 
-import { API_URL, VISION_URL, VISION_MODEL } from './config.js';
+import { API_URL, VISION_URL } from './config.js';
 import { ApiError } from '../lib/apiClient.js';
 // The backend charges credits as part of the generation request, so the UI is
 // told to re-read the balance instead of showing a stale number until reload.
@@ -49,8 +49,23 @@ function postJson(url, payload, signal) {
     });
 }
 
-/** Sign-in and credit problems will not fix themselves on retry. */
-const isTerminal = (error) => error instanceof AccountError || error instanceof ApiError;
+/**
+ * Thrown when the upstream call succeeded (and was therefore charged) but the
+ * body could not be parsed. Distinct from a transport failure: retrying buys a
+ * second billed generation and cannot fix malformed output.
+ */
+export class ResponseFormatError extends Error {
+    constructor(message) {
+        super(message);
+        this.name = 'ResponseFormatError';
+    }
+}
+
+/** Sign-in, credit and parse problems will not fix themselves on retry. */
+const isTerminal = (error) =>
+    error instanceof AccountError ||
+    error instanceof ApiError ||
+    error instanceof ResponseFormatError;
 
 /**
  * Convert file to Base64
@@ -243,8 +258,15 @@ export async function handleResponse(response, returnRawText) {
     }
 
     // Final Failure
-    const snippet = rawText.length > 200 ? rawText.substring(0, 200) + '...' : rawText;
-    throw new Error(`❌ خطأ في تنسيق الاستجابة (JSON Error).\nالسبب: ${finishReason === 'length' ? 'انقطاع النص (Truncated)' : 'تنسيق غير صالح'}\n\nTechnical snippet:\n${snippet}`);
+    // No raw model output in the message: it is rendered straight to the user
+    // and can carry hundreds of characters of unrelated text. The detail goes to
+    // the console for debugging instead.
+    console.error('[AI] unparseable response:', rawText.slice(0, 500));
+    throw new ResponseFormatError(
+        finishReason === 'length'
+            ? '❌ الاستجابة انقطعت قبل ما تكتمل (Truncated). جرّب تبسّط المدخلات أو تقلّل عدد المشاهد.'
+            : '❌ الاستجابة رجعت بتنسيق غير صالح. جرّب تاني.'
+    );
 }
 
 /**
@@ -259,12 +281,17 @@ export async function callOpenRouter(
     const MAX_RETRIES = 2;
     const TIMEOUT_MS = maxTokens > 15000 ? 120000 : 60000;
 
+    // Only the request is retried. Parsing happens after the loop, because a
+    // 200 has already been charged server-side: retrying a response we cannot
+    // parse buys a second (and third) billed generation and still fails.
+    let response;
+
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
         try {
-            const response = await postJson(API_URL, {
+            response = await postJson(API_URL, {
                 prompt: userPrompt,
                 model,
                 maxTokens,
@@ -273,16 +300,13 @@ export async function callOpenRouter(
                 ...(systemMessage ? { systemPrompt: systemMessage } : {}),
             }, controller.signal);
 
-            if (!response.ok) {
-                if (response.status === 429 && attempt < MAX_RETRIES) {
-                    await new Promise(r => setTimeout(r, Math.pow(2, attempt + 1) * 1000));
-                    continue;
-                }
-                throw await toBackendError(response);
-            }
+            if (response.ok) break;
 
-            notifyCreditsChanged();
-            return await handleResponse(response, returnRawText);
+            if (response.status === 429 && attempt < MAX_RETRIES) {
+                await new Promise(r => setTimeout(r, Math.pow(2, attempt + 1) * 1000));
+                continue;
+            }
+            throw await toBackendError(response);
 
         } catch (error) {
             if (error.name === 'AbortError') {
@@ -299,6 +323,9 @@ export async function callOpenRouter(
             clearTimeout(timeoutId);
         }
     }
+
+    notifyCreditsChanged();
+    return handleResponse(response, returnRawText);
 }
 
 /** Call the vision endpoint with a single image. */
@@ -306,28 +333,27 @@ export async function callOpenRouterVision(textPrompt, base64Image, mimeType) {
     const TIMEOUT_MS = 90000;
     const MAX_RETRIES = 1;
 
+    // Same rule as callOpenRouter: retry the request, never the parse.
+    let response;
+
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
         try {
-            const response = await postJson(VISION_URL, {
+            response = await postJson(VISION_URL, {
                 prompt: textPrompt,
-                model: VISION_MODEL,
                 action: 'extract',
                 images: [{ url: `data:${mimeType};base64,${base64Image}` }],
             }, controller.signal);
 
-            if (!response.ok) {
-                if (response.status === 429 && attempt < MAX_RETRIES) {
-                    await new Promise(r => setTimeout(r, 3000));
-                    continue;
-                }
-                throw await toBackendError(response);
-            }
+            if (response.ok) break;
 
-            notifyCreditsChanged();
-            return await handleResponse(response, false);
+            if (response.status === 429 && attempt < MAX_RETRIES) {
+                await new Promise(r => setTimeout(r, 3000));
+                continue;
+            }
+            throw await toBackendError(response);
 
         } catch (error) {
             if (error.name === 'AbortError') {
@@ -343,6 +369,9 @@ export async function callOpenRouterVision(textPrompt, base64Image, mimeType) {
             clearTimeout(timeoutId);
         }
     }
+
+    notifyCreditsChanged();
+    return handleResponse(response, false);
 }
 
 /** Call the vision endpoint with several images at once. */
@@ -354,7 +383,6 @@ export async function callGeminiMultiImage(textPrompt, imageContents) {
     try {
         const response = await postJson(VISION_URL, {
             prompt: textPrompt,
-            model: VISION_MODEL,
             action: 'extract',
             images: imageContents.map(ic => ic.image_url || ic),
         }, controller.signal);

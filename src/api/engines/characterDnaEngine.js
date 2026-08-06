@@ -1236,6 +1236,69 @@ export const getCharacterDNA = (characterType) => {
         };
     }
 
+    // ══════ 16. TRANSPARENT CREATURE | كائن شفاف حي ══════
+    //
+    // The UI has offered this as its own character-type group (with a whole
+    // rules engine behind it) while no branch here matched it — so it resolved
+    // to the generic fallback below, which carries no subTypes. That silently
+    // disabled the "three different transparent creatures, one per idea"
+    // variation rule in brainstormEngine, which is guarded on charDNA.subTypes.
+    if (ct.includes('transparent') || ct.includes('شفاف')) {
+        return {
+            name: "كائن شفاف حي — Transparent Living Creature",
+            desc: "كائن جسمه شفاف بالكامل وأعضاؤه الداخلية مرئية وبتتفاعل مع مشاعره. A being whose body is fully see-through, internal organs visible and emotionally reactive.",
+            visualBuild: "Fully translucent gel/glass-like body with a soft outer refraction rim. Internal organs clearly visible and anatomically placed: heart, lungs, stomach, a simple nervous network. Rounded, non-threatening silhouette. Light passes through and caustics scatter on nearby surfaces.",
+            facialFeatures: "Simple readable face on the transparent surface — large expressive eyes that stay opaque enough to read, minimal mouth. Emotion is carried mainly by the ORGANS, not the face.",
+            costumeStyle: "Mostly unclothed so the interior stays visible. Any accessory is small, opaque and placed off-torso (hat, scarf, tiny bag) so it never blocks the organ view.",
+            colorScheme: "Base is clear/pale cyan translucency. Organs carry the colour: heart warm red, lungs soft pink, stomach amber. Emotional states shift organ hue — joy brightens and warms, fear drains to pale blue, anger floods deep red.",
+            animationStyle: "Internal-first animation: the heartbeat drives the timing of everything. Organs pulse, swell and change colour BEFORE the face reacts. Liquid secondary motion through the body. Light refracts and shifts as it moves.",
+            personalityTraits: "Physically incapable of hiding anything — every feeling is broadcast from the inside out. Usually earnest, a little self-conscious about being so readable, and disarmingly honest as a result.",
+            dialogueStyle: "Speaks plainly, often narrating its own visible reactions. 'شايف قلبي؟ ده معناه إني متوتر.' Comedy and pathos both come from the gap between what it SAYS and what its organs SHOW.",
+            renderNotes: "Subsurface scattering and refraction are the core of the look. Real caustics on surfaces beneath it. Organs rendered as distinct translucent layers with depth. Rim light essential to read the silhouette against any background. Never render it fully opaque.",
+            interactionStyle: "Other characters read its organs like a lie detector and react to that. It gets used — willingly or not — as a living diagram, an emotional mirror, or an accidental snitch.",
+            inspiredBy: "Inside Out (externalised emotion), Osmosis Jones, medical visualisation, jellyfish and glass-frog biology",
+            // === ENRICHED LIBRARIES ===
+            subTypes: [
+                { type: "قلب شفاف/Transparent Heart-Being", personality: "كل مشاعره بتتشاف في نبض قلبه — بيسرع وبيضيء وبيتكسر حرفياً", catchphrase: "'متبصش لوشي — بص لقلبي!'" },
+                { type: "معدة شفافة/Transparent Stomach-Being", personality: "أكول وصادق — كل حاجة بياكلها بتتشاف رحلتها", catchphrase: "'أنا مش جعان… طب ليه معدتي بتزمر؟'" },
+                { type: "رئة شفافة/Transparent Lung-Being", personality: "هادي وبيتنفس بعمق — التوتر بيبان في سرعة نفسه", catchphrase: "'خد نفس عميق معايا — كده.'" },
+                { type: "مخ شفاف/Transparent Brain-Being", personality: "مفكر دايماً — أفكاره بتلمع كشرارات مرئية", catchphrase: "'شايف الشرارة دي؟ دي فكرة لسه بتتولد.'" },
+                { type: "كائن مائي شفاف/Aquatic Translucent", personality: "بيتحرك ببطء وسلاسة — جسمه بيتموج زي قنديل البحر", catchphrase: "'أنا مش بطيء — أنا بتحرك بمزاجي.'" },
+                { type: "كائن بلوري/Crystalline Being", personality: "أكثر صلابة ولمعة — بيكسر الضوء لألوان قوس قزح", catchphrase: "'النور بيعدي مني ويطلع أحلى.'" },
+                { type: "طفل شفاف/Transparent Child", personality: "فضولي ومتحمس — أعضاؤه بتقفز مع كل اكتشاف", catchphrase: "'بص! قلبي بيرقص!'" },
+                { type: "كائن ضبابي/Misty Being", personality: "خجول ونصف شفاف — بيبهت لما يتكسف", catchphrase: "'ممكن… ممكن تبصلي بعدين؟'" }
+            ],
+            dialogueExamples: [
+                "'أنا كويس!' — (القلب بينبض بسرعة جنونية) — 'طب… مش كويس أوي.'",
+                "'مش خايف خالص.' — (الأعضاء بتشحب أزرق) — 'ماشي. خايف شوية.'",
+                "'أنا مش زعلان منك.' — (القلب بيتلون رمادي) — 'خلاص، زعلان.'",
+                "'الأكل كان حلو؟' — 'بص على معدتي وانت تعرف.'",
+                "'إزاي عرفت إني بكدب؟' — 'يا صاحبي، أنا شايف قلبك.'"
+            ],
+            visualVariations: [
+                "Close-up on the heart as it swells and brightens with a realisation",
+                "Backlit shot where the whole body glows and organs read as silhouettes",
+                "Light passing through the body and casting coloured caustics on the floor",
+                "Organs draining from warm to pale blue in a single continuous fear beat",
+                "Two transparent beings overlapping, their organs visible through each other"
+            ],
+            interactionPatterns: [
+                "Another character checks its heart instead of asking how it feels",
+                "It tries to lie and its organs immediately betray it",
+                "A doctor or teacher uses its body as a live diagram",
+                "It hides behind something opaque to get a moment of privacy",
+                "A friend learns to read its organ colours like a language"
+            ],
+            comicSetups: [
+                "Trying to keep a surprise party secret while its heart hammers visibly",
+                "Claiming it already ate — with lunch clearly visible in transit",
+                "Playing poker and losing instantly, every single hand",
+                "Attempting to act casual around a crush as its heart glows brighter and brighter",
+                "Insisting it is not scared during a horror film while its organs go white"
+            ]
+        };
+    }
+
     // ══════ DEFAULT FALLBACK ══════
     return {
         name: "شخصية عامة — General Character",
